@@ -4,9 +4,12 @@
       <div class="messages">
         <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
           <div class="content">{{ msg.content }}</div>
+          <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image">
         </div>
-        <div v-if="loading" class="message assistant">
-          <div class="content">...</div>
+        <div v-if="imageLoading" class="message assistant">
+          <div class="content">
+            <div class="loading-spinner"></div>
+          </div>
         </div>
       </div>
 
@@ -27,11 +30,6 @@
         </button>
       </form>
     </div>
-
-    <div class="image-container">
-      <div v-if="imageLoading" class="loading-spinner"></div>
-      <img v-else-if="imageSrc" :src="imageSrc" alt="Generated Image">
-    </div>
   </div>
 </template>
 
@@ -43,17 +41,24 @@ export default {
       messages: [],
       loading: false,
       imageLoading: false,
-      imageSrc: null,
+      imageSrcs: [],
       prompt: '', // 新增的提示词变量
       selectedOption: '文案' // 新增的选项变量，默认选中“文案”
     };
   },
   methods: {
+      scrollToBottom() {
+    this.$nextTick(() => {
+      const messagesContainer = this.$el.querySelector('.messages');
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+  },
     async sendMessage() {
       if (!this.inputMessage.trim()) return;
 
       const userMessage = this.inputMessage;
       this.messages.push({ role: 'user', content: userMessage });
+      this.scrollToBottom();
       this.inputMessage = '';
       this.loading = true;
       this.imageLoading = this.selectedOption === '背景';
@@ -107,17 +112,18 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: this.prompt }) // 使用 prompt 变量代替 userMessage
+            body: JSON.stringify({ message: this.prompt })
           });
 
           const imageData = await imageResponse.json();
           if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
-            // 确保img_base64存在且不为空
-            this.imageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
+            const newImageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
+            this.imageSrcs.push(newImageSrc); // 将新图片 URL 添加到数组中
+            this.messages.push({ role: 'assistant', content: '图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
+            this.scrollToBottom();
           } else {
             console.error('Image data not found or invalid format', imageData);
-            // 可选：显示错误信息或默认图像
-            this.imageSrc = null;
+            this.messages.push({ role: 'assistant', content: '图片生成失败' });
           }
         }
       } catch (error) {
@@ -135,24 +141,37 @@ export default {
       } else {
         this.messages.push({ role: 'assistant', content });
       }
+      this.scrollToBottom();
     }
   }
 };
 </script>
 
 <style scoped>
+.message-image {
+  max-width: 100%;
+  max-height: 300px; /* 可以根据需要调整 */
+  object-fit: contain;
+  margin-top: 10px;
+  border-radius: 8px;
+}
+
 .chat-container {
   display: flex;
-  height: 100vh; /* 铺满整个屏幕高度 */
-  width: 100vw; /* 铺满整个屏幕宽度 */
+  height: 100vh;
+  /* 铺满整个屏幕高度 */
+  width: 100vw;
+  /* 铺满整个屏幕宽度 */
   gap: 24px;
   padding: 20px;
   background-color: #f8f9fa;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  position: fixed; /* 固定位置 */
+  position: fixed;
+  /* 固定位置 */
   top: 0;
   left: 0;
-  box-sizing: border-box; /* 确保padding不会增加总宽度 */
+  box-sizing: border-box;
+  /* 确保padding不会增加总宽度 */
 }
 
 .chat-content {
@@ -196,8 +215,15 @@ export default {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message.user {
@@ -235,13 +261,16 @@ form {
 
 textarea {
   flex: 1;
-  padding: 12px 16px; /* 增加内边距 */
+  padding: 12px 16px;
+  /* 增加内边距 */
   border: 1px solid #ddd;
   border-radius: 24px;
   resize: none;
-  height: 60px; /* 增加高度 */
+  height: 60px;
+  /* 增加高度 */
   font-family: inherit;
-  font-size: 18px; /* 调大字体 */
+  font-size: 18px;
+  /* 调大字体 */
   transition: border-color 0.3s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -253,14 +282,16 @@ textarea:focus {
 }
 
 button {
-  padding: 0 30px; /* 增加内边距 */
+  padding: 0 30px;
+  /* 增加内边距 */
   background: #2196f3;
   color: white;
   border: none;
   border-radius: 24px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 18px; /* 调大字体 */
+  font-size: 18px;
+  /* 调大字体 */
   transition: background-color 0.3s;
   display: flex;
   align-items: center;
@@ -276,20 +307,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.image-container {
-  width: 340px;
-  height: 100%;
-  border-radius: 10px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background-color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
 .loading-spinner {
   border: 3px solid rgba(33, 150, 243, 0.1);
   border-top: 3px solid #2196f3;
@@ -300,8 +317,13 @@ button:disabled {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 img {
@@ -317,13 +339,7 @@ img {
     flex-direction: column;
     height: 100vh;
   }
-  
-  .image-container {
-    width: 100%;
-    height: 300px;
-    margin-top: 20px;
-  }
-  
+
   button {
     padding: 0 20px;
   }
