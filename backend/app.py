@@ -29,9 +29,11 @@ def chat():
     headers={"ngrok-skip-browser-warning":"122131"}
     data = request.json
     message = data.get('message')
-    
-    # 调用API并流式返回响应
-    api_url = URL+"/generateImagePromptWithThinkStream"
+    option = data.get('option')
+    if option == "文案":
+        api_url = URL+"/generateCopywritingPromptWithThinkStream"
+    else:
+        api_url = URL+"/generateImagePromptWithThinkStream"
     response = requests.post(api_url, json={'message': message}, stream=True,headers=headers)
     
     def generate():

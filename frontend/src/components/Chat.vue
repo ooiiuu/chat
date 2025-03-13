@@ -11,6 +11,16 @@
       </div>
 
       <form @submit.prevent="sendMessage">
+        <div class="options">
+          <label>
+            <input type="radio" v-model="selectedOption" value="文案" :disabled="loading || imageLoading" />
+            生产文案
+          </label>
+          <label>
+            <input type="radio" v-model="selectedOption" value="背景" :disabled="loading || imageLoading" />
+            生成背景
+          </label>
+        </div>
         <textarea v-model="inputMessage" placeholder="Type your message..." :disabled="loading"></textarea>
         <button type="submit" :disabled="loading || !inputMessage.trim()">
           Send
@@ -34,7 +44,8 @@ export default {
       loading: false,
       imageLoading: false,
       imageSrc: null,
-      prompt: '' // 新增的提示词变量
+      prompt: '', // 新增的提示词变量
+      selectedOption: '文案' // 新增的选项变量，默认选中“文案”
     };
   },
   methods: {
@@ -45,7 +56,7 @@ export default {
       this.messages.push({ role: 'user', content: userMessage });
       this.inputMessage = '';
       this.loading = true;
-      this.imageLoading = true;
+      this.imageLoading = this.selectedOption === '背景';
 
       try {
         // Send text message
@@ -54,7 +65,7 @@ export default {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ message: userMessage })
+          body: JSON.stringify({ message: userMessage, option: this.selectedOption }) // 传递选项信息
         });
 
         if (!textResponse.ok) {
@@ -89,23 +100,25 @@ export default {
         const promptData = await removeThinkResponse.json();
         this.prompt = promptData.prompt; // 将返回的提示词保存到变量中
 
-        // 修改: 图像生成请求使用 prompt 变量
-        const imageResponse = await fetch('/api/image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ message: this.prompt }) // 使用 prompt 变量代替 userMessage
-        });
+        // 仅当选中“背景”选项时，才发送图像生成请求
+        if (this.selectedOption === '背景') {
+          const imageResponse = await fetch('/api/image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: this.prompt }) // 使用 prompt 变量代替 userMessage
+          });
 
-        const imageData = await imageResponse.json();
-        if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
-          // 确保img_base64存在且不为空
-          this.imageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
-        } else {
-          console.error('Image data not found or invalid format', imageData);
-          // 可选：显示错误信息或默认图像
-          this.imageSrc = null;
+          const imageData = await imageResponse.json();
+          if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
+            // 确保img_base64存在且不为空
+            this.imageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
+          } else {
+            console.error('Image data not found or invalid format', imageData);
+            // 可选：显示错误信息或默认图像
+            this.imageSrc = null;
+          }
         }
       } catch (error) {
         console.error('Error:', error);
@@ -214,6 +227,12 @@ form {
   border-top: 1px solid #eee;
 }
 
+.options {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 textarea {
   flex: 1;
   padding: 12px 16px; /* 增加内边距 */
@@ -310,5 +329,3 @@ img {
   }
 }
 </style>
-
-
