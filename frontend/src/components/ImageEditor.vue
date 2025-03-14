@@ -1,13 +1,17 @@
 <template>
   <div>
+    <button @click="goBack" class="back-button">返回</button>
     <div id="tui-image-editor"></div>
   </div>
 </template>
+
 <script>
 import "tui-image-editor/dist/tui-image-editor.css";
 import "tui-color-picker/dist/tui-color-picker.css";
 import ImageEditor from "tui-image-editor";
+
 const locale_zh = {
+  // ... 保持原有的本地化配置 ...
   ZoomIn: "放大",
   ZoomOut: "缩小",
   Hand: "手掌",
@@ -81,46 +85,98 @@ const locale_zh = {
   Height: "高度",
   "Lock Aspect Ratio": "锁定宽高比例",
 };
+import { useRoute } from 'vue-router';
+
 export default {
+  setup() {
+    const route = useRoute();
+    // console.log('Received imageSrc:', route.params.imageSrc);
+
+    return {
+      imageSrc: route.params.imageSrc
+    }
+  },
+  props: ['imageSrc'],
   data() {
     return {
       instance: null,
     };
   },
   mounted() {
+    // console.log('Received imageSrc:', this.imageSrc);
     this.init();
   },
   methods: {
     init() {
+      if (!this.imageSrc) {
+        console.error('No image source provided');
+        return;
+      }
+
+      const decodedImageSrc = decodeURIComponent(this.imageSrc);
+
       this.instance = new ImageEditor(
         document.querySelector("#tui-image-editor"),
         {
           includeUI: {
             loadImage: {
-              path: "/img.png",
-              name: "image",
+              path: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // 使用一个1x1像素的透明图片
+              name: "SampleImage",
             },
-            initMenu: "draw", // 默认打开的菜单项
-            menuBarPosition: "bottom", // 菜单所在的位置
-            locale: locale_zh, // 本地化语言为中文
+            // ... 其他配置保持不变
+            initMenu: "draw",
+            menuBarPosition: "bottom",
+            locale: locale_zh,
           },
-          cssMaxWidth: window.innerWidth, // canvas 最大宽度
-          cssMaxHeight: window.innerHeight - 100, // canvas 最大高度
+          // ... 其他配置保持不变
+          cssMaxWidth: window.innerWidth,
+          cssMaxHeight: window.innerHeight - 100,
         }
       );
-      document.getElementsByClassName("tui-image-editor-main")[0].style.top = "45px"; // 图片距顶部工具栏的距离
+      // 使用 nextTick 确保 DOM 已更新
+      this.$nextTick(() => {
+        // 延迟一小段时间再加载实际图片
+        setTimeout(() => {
+          this.instance.loadImageFromURL(decodedImageSrc, 'SampleImage').then(() => {
+            console.log('Image loaded successfully');
+            // 确保图片加载后再调整UI
+            document.getElementsByClassName("tui-image-editor-main")[0].style.top = "45px";
+          }).catch(err => {
+            console.error('Failed to load image:', err);
+          });
+        }, 100);
+      });
     },
-  },
+    // ... 其他方法
+    goBack() {
+      this.$router.push({ name: 'Chat' });
+    }
+  }
 };
+
 </script>
 
 <style scoped>
 div {
-  height: 100vh; /* 或使用calc(100vh - [header高度]) */
+  height: 100vh;
   width: 100%;
 }
+
 #tui-image-editor {
   height: 100%;
   width: 100%;
+}
+
+.back-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  padding: 5px 10px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>

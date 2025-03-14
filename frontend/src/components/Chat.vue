@@ -4,7 +4,8 @@
       <div class="messages">
         <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
           <div class="content">{{ msg.content }}</div>
-          <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image">
+          <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image"
+            @click="editImage(msg.imageSrc)">
         </div>
         <div v-if="imageLoading" class="message assistant">
           <div class="content">
@@ -42,17 +43,17 @@ export default {
       loading: false,
       imageLoading: false,
       imageSrcs: [],
-      prompt: '', // 新增的提示词变量
-      selectedOption: '文案' // 新增的选项变量，默认选中“文案”
+      prompt: '',
+      selectedOption: '文案'
     };
   },
   methods: {
-      scrollToBottom() {
-    this.$nextTick(() => {
-      const messagesContainer = this.$el.querySelector('.messages');
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    });
-  },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const messagesContainer = this.$el.querySelector('.messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
+    },
     async sendMessage() {
       if (!this.inputMessage.trim()) return;
 
@@ -142,6 +143,11 @@ export default {
         this.messages.push({ role: 'assistant', content });
       }
       this.scrollToBottom();
+    },
+    editImage(imageSrc) {
+      // 使用 encodeURIComponent 来处理可能包含特殊字符的 URL
+      const encodedImageSrc = encodeURIComponent(imageSrc);
+      this.$router.push({ name: 'ImageEditor', params: { imageSrc: encodedImageSrc } });
     }
   }
 };
@@ -150,7 +156,8 @@ export default {
 <style scoped>
 .message-image {
   max-width: 100%;
-  max-height: 300px; /* 可以根据需要调整 */
+  max-height: 300px;
+  /* 可以根据需要调整 */
   object-fit: contain;
   margin-top: 10px;
   border-radius: 8px;

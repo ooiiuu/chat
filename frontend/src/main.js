@@ -1,11 +1,19 @@
 import { createApp } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import axios from 'axios'
+import Chat from './components/Chat.vue'
+import ImageEditor from './components/ImageEditor.vue'
 
-// 配置axios
-axios.defaults.baseURL = 'http://localhost:5000'
-axios.defaults.headers.post['Content-Type'] = 'application/json'
+const routes = [
+    { path: '/', name: 'Chat', component: Chat },
+    { path: '/edit/:imageSrc', name: 'ImageEditor', component: ImageEditor, props: true }
+  ]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
 
 const app = createApp(App)
-app.config.globalProperties.$http = axios
+app.use(router)
 app.mount('#app')
