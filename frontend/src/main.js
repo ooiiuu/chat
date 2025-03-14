@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Chat from './components/Chat.vue'
 import ImageEditor from './components/ImageEditor.vue'
+import store from './store'
 
 const routes = [
     { path: '/', name: 'Chat', component: Chat },
@@ -16,4 +17,5 @@ const router = createRouter({
 
 const app = createApp(App)
 app.use(router)
+app.use(store)
 app.mount('#app')

@@ -1,11 +1,11 @@
 <template>
   <div class="chat-container">
     <div class="chat-content">
-      <div class="messages">
+      <div class="messages" ref="messagesContainer">
         <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
           <div class="content">{{ msg.content }}</div>
           <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image"
-            @click="editImage(msg.imageSrc)">
+            @click="showImageOptions(msg.imageSrc)">
         </div>
         <div v-if="imageLoading" class="message assistant">
           <div class="content">
@@ -32,33 +32,56 @@
       </form>
     </div>
   </div>
+
+  <!-- 对话框 -->
+  <div v-if="showDialog" class="dialog-overlay">
+    <div class="dialog">
+      <p>请选择操作：</p>
+      <button @click="saveImage">下载图片</button>
+      <button @click="editImage">编辑图片</button>
+      <button @click="closeDialog">取消</button>
+    </div>
+  </div>
 </template>
 
 <script>
+import { ref } from 'vue';
+import { mapState, mapActions } from 'vuex';
+
 export default {
   data() {
     return {
       inputMessage: '',
-      messages: [],
       loading: false,
       imageLoading: false,
       imageSrcs: [],
       prompt: '',
-      selectedOption: '文案'
+      selectedOption: '文案',
+      showDialog: false,
+      currentImageSrc: '',
+      messagesContainer: null
     };
   },
+  computed: {
+    ...mapState(['messages'])
+  },
   methods: {
+    ...mapActions(['updateMessages', 'appendMessage']),
     scrollToBottom() {
       this.$nextTick(() => {
-        const messagesContainer = this.$el.querySelector('.messages');
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        const container = this.$refs.messagesContainer;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        } else {
+          console.warn('Messages container not found');
+        }
       });
     },
     async sendMessage() {
       if (!this.inputMessage.trim()) return;
 
       const userMessage = this.inputMessage;
-      this.messages.push({ role: 'user', content: userMessage });
+      this.appendMessage({ role: 'user', content: userMessage });
       this.scrollToBottom();
       this.inputMessage = '';
       this.loading = true;
@@ -120,16 +143,16 @@ export default {
           if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
             const newImageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
             this.imageSrcs.push(newImageSrc); // 将新图片 URL 添加到数组中
-            this.messages.push({ role: 'assistant', content: '图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
+            this.appendMessage({ role: 'assistant', content: '图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
             this.scrollToBottom();
           } else {
             console.error('Image data not found or invalid format', imageData);
-            this.messages.push({ role: 'assistant', content: '图片生成失败' });
+            this.appendMessage({ role: 'assistant', content: '图片生成失败' });
           }
         }
       } catch (error) {
         console.error('Error:', error);
-        this.messages.push({ role: 'assistant', content: 'Error occurred' });
+        this.appendMessage({ role: 'assistant', content: 'Error occurred' });
       } finally {
         this.loading = false;
         this.imageLoading = false;
@@ -140,14 +163,47 @@ export default {
       if (lastMessage.role === 'assistant') {
         lastMessage.content = content;
       } else {
-        this.messages.push({ role: 'assistant', content });
+        this.appendMessage({ role: 'assistant', content });
       }
       this.scrollToBottom();
+      this.updateMessages(this.messages);
     },
-    editImage(imageSrc) {
-      // 使用 encodeURIComponent 来处理可能包含特殊字符的 URL
-      const encodedImageSrc = encodeURIComponent(imageSrc);
+    showImageOptions(imageSrc) {
+      this.currentImageSrc = imageSrc;
+      this.showDialog = true;
+    },
+    saveImage() {
+      const link = document.createElement('a');
+      link.href = this.currentImageSrc;
+      link.download = 'image.png';
+      link.click();
+      this.closeDialog();
+    },
+    editImage() {
+      const encodedImageSrc = encodeURIComponent(this.currentImageSrc);
       this.$router.push({ name: 'ImageEditor', params: { imageSrc: encodedImageSrc } });
+      this.closeDialog();
+    },
+    closeDialog() {
+      this.showDialog = false;
+      this.currentImageSrc = '';
+    }
+  },
+  // Chat.vue 中的 mounted 钩子
+  mounted() {
+    this.updateMessages(this.messages);
+
+    // 检查 Vuex 中是否有编辑后的图片
+    const editedImage = this.$store.state.editedImage;
+    if (editedImage) {
+      this.appendMessage({
+        role: 'assistant',
+        content: '编辑后的图片',
+        imageSrc: editedImage
+      });
+      this.scrollToBottom();
+      // 清除存储的图片，防止重复添加
+      this.$store.dispatch('setEditedImage', null);
     }
   }
 };
@@ -338,6 +394,42 @@ img {
   max-height: 100%;
   object-fit: contain;
   padding: 10px;
+}
+
+/* 对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.dialog button {
+  margin: 10px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #2196f3;
+  color: white;
+  font-size: 16px;
+}
+
+.dialog button:hover {
+  background: #1976d2;
 }
 
 /* 响应式调整 */

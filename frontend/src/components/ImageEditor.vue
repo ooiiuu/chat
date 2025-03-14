@@ -1,6 +1,7 @@
 <template>
   <div>
-    <button @click="goBack" class="back-button">返回</button>
+    <button @click="goBack" class="back-button">保存并返回</button>
+    <button @click="cancel" class="cancel-button">取消</button>
     <div id="tui-image-editor"></div>
   </div>
 </template>
@@ -147,8 +148,17 @@ export default {
         }, 100);
       });
     },
-    // ... 其他方法
     goBack() {
+      if (this.instance) {
+        const dataUrl = this.instance.toDataURL();
+        // 使用 Vuex 存储编辑后的图片
+        this.$store.dispatch('setEditedImage', dataUrl);
+        this.$router.push({ name: 'Chat' });
+      } else {
+        this.$router.push({ name: 'Chat' });
+      }
+    },
+    cancel() {
       this.$router.push({ name: 'Chat' });
     }
   }
@@ -174,6 +184,19 @@ div {
   z-index: 1000;
   padding: 5px 10px;
   background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  padding: 5px 10px;
+  background-color: #f44336;
   color: white;
   border: none;
   border-radius: 4px;
