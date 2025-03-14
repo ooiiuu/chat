@@ -66,17 +66,6 @@ def image():
             "message": "Failed to generate image"
         }), 500
     
-def image_test(prompt):
-    api_url = URL+"/image"
-    response = requests.post(api_url, json={'prompt': prompt})
-    if response.status_code == 200:
-        img = Image.open(io.BytesIO(base64.b64decode(response.json()['respond']['img_base64'])))
-        img.show()
-    else:
-        print(jsonify({
-            "status": "error",
-            "message": "Failed to generate image"
-        })) 
 
 if __name__ == '__main__':
     pass

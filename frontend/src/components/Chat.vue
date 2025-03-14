@@ -107,7 +107,7 @@ export default {
 
         // 仅当选中“背景”选项时，才发送图像生成请求
         if (this.selectedOption === '背景') {
-          const imageResponse = await fetch('/api/image', {
+          const imageResponse = await fetch('http://127.0.0.1:5000/image', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
