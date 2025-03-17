@@ -31,6 +31,14 @@
         </button>
       </form>
     </div>
+
+    <!-- 添加模板生成入口 -->
+    <div class="template-button-container">
+      <button @click="goToTemplateGenerator" class="template-button">
+        <span>生成海报模板</span>
+      </button>
+    </div>
+
   </div>
 
   <!-- 对话框 -->
@@ -187,6 +195,9 @@ export default {
     closeDialog() {
       this.showDialog = false;
       this.currentImageSrc = '';
+    },
+    goToTemplateGenerator() {
+      this.$router.push({ name: 'TemplateGenerator' });
     }
   },
   // Chat.vue 中的 mounted 钩子
@@ -442,5 +453,32 @@ img {
   button {
     padding: 0 20px;
   }
+}
+
+.template-button-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.template-button {
+  padding: 12px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.template-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 </style>
