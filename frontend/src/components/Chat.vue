@@ -4,8 +4,12 @@
       <div class="messages" ref="messagesContainer">
         <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
           <div class="content">{{ msg.content }}</div>
-          <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image"
-            @click="showImageOptions(msg.imageSrc)">
+          <img v-if="msg.imageSrc" :src="msg.imageSrc" alt="Generated Image" class="message-image">
+          <!-- 添加下载和编辑按钮 -->
+          <div v-if="msg.imageSrc" class="image-options">
+            <button @click="saveImage(msg.imageSrc)">下载图片</button>
+            <button @click="editImage(msg.imageSrc)">编辑图片</button>
+          </div>
         </div>
         <div v-if="imageLoading" class="message assistant">
           <div class="content">
@@ -30,24 +34,6 @@
           Send
         </button>
       </form>
-    </div>
-
-    <!-- 添加模板生成入口 -->
-    <div class="template-button-container">
-      <button @click="goToTemplateGenerator" class="template-button">
-        <span>生成海报模板</span>
-      </button>
-    </div>
-
-  </div>
-
-  <!-- 对话框 -->
-  <div v-if="showDialog" class="dialog-overlay">
-    <div class="dialog">
-      <p>请选择操作：</p>
-      <button @click="saveImage">下载图片</button>
-      <button @click="editImage">编辑图片</button>
-      <button @click="closeDialog">取消</button>
     </div>
   </div>
 </template>
@@ -176,21 +162,15 @@ export default {
       this.scrollToBottom();
       this.updateMessages(this.messages);
     },
-    showImageOptions(imageSrc) {
-      this.currentImageSrc = imageSrc;
-      this.showDialog = true;
-    },
-    saveImage() {
+    saveImage(imageSrc) {
       const link = document.createElement('a');
-      link.href = this.currentImageSrc;
+      link.href = imageSrc;
       link.download = 'image.png';
       link.click();
-      this.closeDialog();
     },
-    editImage() {
-      const encodedImageSrc = encodeURIComponent(this.currentImageSrc);
+    editImage(imageSrc) {
+      const encodedImageSrc = encodeURIComponent(imageSrc);
       this.$router.push({ name: 'ImageEditor', params: { imageSrc: encodedImageSrc } });
-      this.closeDialog();
     },
     closeDialog() {
       this.showDialog = false;
@@ -232,18 +212,12 @@ export default {
 
 .chat-container {
   display: flex;
-  height: 100vh;
-  /* 铺满整个屏幕高度 */
-  width: 100vw;
-  /* 铺满整个屏幕宽度 */
+  flex-direction: column;
+  height: calc(100vh - 60px); /* 调整高度以适应头部和页脚 */
   gap: 24px;
   padding: 20px;
   background-color: #f8f9fa;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  position: fixed;
-  /* 固定位置 */
-  top: 0;
-  left: 0;
   box-sizing: border-box;
   /* 确保padding不会增加总宽度 */
 }
@@ -407,47 +381,11 @@ img {
   padding: 10px;
 }
 
-/* 对话框样式 */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialog {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.dialog button {
-  margin: 10px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  background: #2196f3;
-  color: white;
-  font-size: 16px;
-}
-
-.dialog button:hover {
-  background: #1976d2;
-}
-
 /* 响应式调整 */
 @media (max-width: 768px) {
   .chat-container {
     flex-direction: column;
-    height: 100vh;
+    height: calc(100vh - 60px); /* 调整高度以适应头部和页脚 */
   }
 
   button {
@@ -455,30 +393,23 @@ img {
   }
 }
 
-.template-button-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 100;
-}
-
-.template-button {
-  padding: 12px 20px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 16px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+.image-options {
   display: flex;
-  align-items: center;
-  transition: all 0.3s ease;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.template-button:hover {
-  background-color: #388e3c;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.image-options button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #2196f3;
+  color: white;
+  font-size: 14px;
+}
+
+.image-options button:hover {
+  background: #1976d2;
 }
 </style>

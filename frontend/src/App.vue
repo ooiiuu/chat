@@ -71,4 +71,9 @@ html, body {
   color: #1976d2;
   font-weight: 500;
 }
+
+footer {
+  text-align: center; /* 添加这一行 */
+  margin-top: 20px; /* 可选：添加一些上边距 */
+}
 </style>
