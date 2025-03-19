@@ -1,12 +1,38 @@
 import { createStore } from 'vuex';
+// 添加 auth 模块的导入
+import auth from './modules/auth';
 
 export default createStore({
+    modules: {
+        auth
+    },
     state: {
         messages: [],
         editedImage: null,
         templates: [],
         currentTemplate: null
     },
+    // 持久化状态到本地存储
+    plugins: [
+        store => {
+            // 初始化时从localStorage获取认证状态
+            const savedAuth = localStorage.getItem('auth')
+            if (savedAuth) {
+                store.commit('auth/SET_USER', JSON.parse(savedAuth))
+            }
+
+            // 监听状态变化，保存到localStorage
+            store.subscribe((mutation, state) => {
+                if (mutation.type.startsWith('auth/')) {
+                    if (state.auth.user) {
+                        localStorage.setItem('auth', JSON.stringify(state.auth.user))
+                    } else {
+                        localStorage.removeItem('auth')
+                    }
+                }
+            })
+        }
+    ],
     mutations: {
         // 现有的 mutations
         setMessages(state, messages) {
@@ -18,7 +44,7 @@ export default createStore({
         SET_EDITED_IMAGE(state, imageData) {
             state.editedImage = imageData;
         },
-        
+
         // 新增的 mutations
         SET_TEMPLATES(state, templates) {
             state.templates = templates;
@@ -44,7 +70,7 @@ export default createStore({
         setEditedImage({ commit }, imageData) {
             commit('SET_EDITED_IMAGE', imageData);
         },
-        
+
         // 新增的 actions
         setTemplates({ commit }, templates) {
             commit('SET_TEMPLATES', templates);

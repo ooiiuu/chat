@@ -1,20 +1,184 @@
-from flask import Flask, request, jsonify, Response
-import requests
+from flask import Flask, request, jsonify, Response, render_template, redirect, url_for, flash, current_app
 from flask_cors import CORS
 import re
-from PIL import Image
-import base64
-import io
 import os
 import uuid
 from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv() 
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_bcrypt import Bcrypt
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+from wtforms.validators import Regexp
 
+load_dotenv()
 URL = os.getenv("API_URL")
 
 app = Flask(__name__)
-CORS(app)  # 允许所有来源访问所有路由
+CORS(app, supports_credentials=True)  # 启用跨域带凭证
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/chat'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# 初始化扩展
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+# ---------- 用户模型 ----------
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
+
+# ---------- 表单类 ----------
+class RegistrationForm(FlaskForm):
+    username = StringField('用户名', validators=[
+        DataRequired(),
+        Length(min=4, max=20)
+    ])
+    email = StringField('邮箱', validators=[
+        DataRequired(), 
+        Email()
+    ])
+    password = PasswordField('密码', validators=[
+        DataRequired(),
+        Length(min=8),
+        Regexp(r'^(?=.*[A-Za-z])(?=.*\d)', message="必须包含字母和数字")
+    ])
+    confirm_password = PasswordField('确认密码', validators=[
+        DataRequired(),
+        EqualTo('password')
+    ])
+    submit = SubmitField('注册')
+
+    def validate_username(self, field):
+        if User.query.filter_by(username=field.data).first():
+            raise ValidationError('用户名已被使用')
+
+    def validate_email(self, field):
+        if User.query.filter_by(email=field.data).first():
+            raise ValidationError('邮箱已被注册')
+
+class LoginForm(FlaskForm):
+    username_or_email = StringField('用户名/邮箱', validators=[DataRequired()])
+    password = PasswordField('密码', validators=[DataRequired()])
+    submit = SubmitField('登录')
+
+# ---------- 认证路由 ----------
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
+
+@app.before_request
+def check_active_session():
+    if request.endpoint in ['login', 'register']:
+        return
+    if not current_user.is_authenticated:
+        return jsonify({"status": "error", "message": "未授权"}), 401
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    # 手动验证数据
+    errors = {}
+
+    # 检查用户名是否重复
+    if User.query.filter_by(username=data['username']).first():
+        errors['username'] = ['该用户名已被使用']
+    
+    # 检查邮箱是否重复
+    if User.query.filter_by(email=data['email']).first():
+        errors['email'] = ['该邮箱已被注册']
+    
+    # 检查密码复杂度
+    if not re.match(r'^(?=.*[A-Za-z])(?=.*\d)', data['password']):
+        errors['password'] = ['必须包含字母和数字']
+    
+    # 确认密码匹配
+    if data['password'] != data['confirm_password']:
+        errors['confirm_password'] = ['两次密码不一致']
+
+    if errors:
+        return jsonify({
+            "status": "error",
+            "message": "验证失败",
+            "errors": errors
+        }), 400
+
+    try:
+        user = User(
+            username=data['username'],
+            email=data['email']
+        )
+        user.set_password(data['password'])
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({
+            "status": "success",
+            "message": "注册成功"
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    
+    user = User.query.filter(
+        (User.username == data['identifier']) |
+        (User.email == data['identifier'])
+    ).first()
+
+    if not user:
+        return jsonify({
+            "status": "error",
+            "message": "用户不存在"
+        }), 401
+
+    if not user.check_password(data['password']):
+        return jsonify({
+            "status": "error",
+            "message": "密码错误"
+        }), 401
+
+    login_user(user)
+    return jsonify({
+        "status": "success",
+        "message": "登录成功",
+        "user": {
+            "id": user.id,
+            "username": user.username
+        }
+    })
+
+@app.route('/logout')
+def logout():
+    if current_user.is_authenticated:
+        logout_user()
+    return jsonify({"status": "success", "message": "登出成功"})
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return jsonify({"status": "success", "message": "欢迎进入仪表盘"})
 
 def remove_think_block(text):
     # 去除think
@@ -207,6 +371,7 @@ def generate_icon():
         }), 500
 
 @app.route('/save-template', methods=['POST'])
+@login_required
 def save_template():
     data = request.json
     template = data.get('template')
@@ -228,7 +393,8 @@ def save_template():
 
 
 
+# ---------- 初始化应用 ----------
 if __name__ == '__main__':
-    pass
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
-    # image_test("marine conservation, ocean preservation, blue horizon, coral reef, biodiversity, sea turtle, dolphin, underwater exploration, sustainable fishing, coastal ecosystem, environmental protection")

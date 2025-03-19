@@ -1,25 +1,30 @@
+// src/main.js
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import Chat from './components/Chat.vue'
-import ImageEditor from './components/ImageEditor.vue'
-import TemplateGenerator from './components/TemplateGenerator.vue'
-import TemplateEditor from './components/TemplateEditor.vue'
+import router from './router'
 import store from './store'
+import axios from 'axios'
 
-const routes = [
-    { path: '/', name: 'Chat', component: Chat },
-    { path: '/edit/:imageSrc', name: 'ImageEditor', component: ImageEditor, props: true },
-    { path: '/templates', name: 'TemplateGenerator', component: TemplateGenerator },
-    { path: '/template-editor/:templateId', name: 'TemplateEditor', component: TemplateEditor, props: true }
-]
+// 全局axios配置
+axios.defaults.withCredentials = true
+axios.defaults.baseURL = 'http://localhost:5000'
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
+// 创建axios响应拦截器
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      // 直接使用导入的 store 和 router 实例
+      store.commit('auth/SET_USER', null)
+      router.push('/')
+    }
+    return Promise.reject(error)
+  }
+)
 
 const app = createApp(App)
+
 app.use(router)
 app.use(store)
+
 app.mount('#app')
