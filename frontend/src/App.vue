@@ -6,7 +6,13 @@
         <nav class="main-nav">
           <router-link to="/chat" class="nav-link">聊天</router-link>
           <router-link to="/templates" class="nav-link">海报模板</router-link>
-          <a href="#" @click.prevent="handleLogout" class="nav-link logout">退出</a>
+          <div class="user-menu" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
+            <img src="/head1.png" alt="头像" class="avatar">
+            <span class="username">{{ currentUser.username }}</span>
+            <div v-if="showDropdown" class="dropdown">
+              <a href="#" @click.prevent="handleLogout" class="dropdown-item">退出</a>
+            </div>
+          </div>
         </nav>
       </div>
     </header>
@@ -20,7 +26,7 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -33,6 +39,7 @@ export default {
     
     const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
     const currentUser = computed(() => store.getters['auth/currentUser'])
+    const showDropdown = ref(false)
     
     const handleLogout = async () => {
       try {
@@ -59,6 +66,7 @@ export default {
     return {
       isAuthenticated,
       currentUser,
+      showDropdown,
       handleLogout
     }
   }
@@ -130,6 +138,47 @@ html, body {
   font-weight: 500;
 }
 
+.user-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.username {
+  color: #333;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: 10px 20px;
+  color: #333;
+  text-decoration: none;
+  display: block;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: #f0f0f0;
+}
+
 .logout {
   margin-left: 20px;
   background-color: #f8f9fa;
@@ -162,5 +211,4 @@ footer {
     margin-top: 15px;
   }
 }
-
 </style>
