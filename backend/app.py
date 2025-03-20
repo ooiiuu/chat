@@ -4,6 +4,7 @@ import re
 import os
 import uuid
 from datetime import datetime
+import requests
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -83,12 +84,12 @@ class LoginForm(FlaskForm):
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-@app.before_request
-def check_active_session():
-    if request.endpoint in ['login', 'register']:
-        return
-    if not current_user.is_authenticated:
-        return jsonify({"status": "error", "message": "未授权"}), 401
+# @app.before_request
+# def check_active_session():
+#     if request.endpoint in ['login', 'register']:
+#         return
+#     if not current_user.is_authenticated:
+#         return jsonify({"status": "error", "message": "未授权"}), 401
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -173,6 +174,7 @@ def login():
 def logout():
     if current_user.is_authenticated:
         logout_user()
+        print("登出成功")
     return jsonify({"status": "success", "message": "登出成功"})
 
 @app.route('/dashboard')
@@ -371,7 +373,6 @@ def generate_icon():
         }), 500
 
 @app.route('/save-template', methods=['POST'])
-@login_required
 def save_template():
     data = request.json
     template = data.get('template')

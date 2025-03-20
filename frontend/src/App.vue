@@ -5,7 +5,7 @@
         <h1>AI 助手</h1>
         <nav class="main-nav">
           <router-link to="/chat" class="nav-link">聊天</router-link>
-          <router-link to="/templates" class="nav-link">海报模板</router-link>
+          <!-- <router-link to="/templates" class="nav-link">海报模板</router-link> -->
           <div class="user-menu" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
             <img src="/head1.png" alt="头像" class="avatar">
             <span class="username">{{ currentUser.username }}</span>
@@ -42,26 +42,33 @@ export default {
     const showDropdown = ref(false)
     
     const handleLogout = async () => {
-      try {
-        // 先清除前端的认证状态，无论后端操作是否成功
-        localStorage.removeItem('token')
-        sessionStorage.removeItem('token')
-        store.commit('auth/SET_USER', null)
-        
-        // 然后尝试调用后端的logout接口，但不要等待响应
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-        
-        axios.get('/logout', config).catch(error => {
-          console.log('后端登出接口调用失败，但前端已成功登出', error)
-        })
-        
-        // 无论后端操作是否成功，都跳转到登录页
-        router.push('/')
-      } catch (error) {
-        console.error('退出失败', error)
-      }
-    }
+  try {
+    // 获取当前 Token
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+    // 调用后端登出接口
+    await axios.get('/logout', config)
+      .then(() => {
+        // 登出成功提示（可选）
+        alert('已安全退出');
+      })
+      .catch(error => {
+        console.error('后端登出失败', error);
+        alert('退出失败，请检查网络或重试');
+      });
+
+    // 清除前端认证状态
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    store.commit('auth/SET_USER', null);
+
+    // 跳转到登录页
+    router.push('/');
+  } catch (error) {
+    console.error('退出流程异常', error);
+    alert('发生未知错误，请联系管理员');
+  }
+};
     
     return {
       isAuthenticated,
