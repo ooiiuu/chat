@@ -297,7 +297,7 @@ Stable Diffusion 对否定词（如“不”）处理不佳。尽量使用肯定
 好："cat, sitting, windowsill, city view"
 
 """
-        message = f"根据'{message}'用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
+        message = f"根据文案'{message}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
     client = OpenAI(api_key=DEEP_API_KEY, base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
         model="deepseek-chat",
