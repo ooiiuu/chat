@@ -2,8 +2,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Chat from '../components/Chat.vue'
 import ImageEditor from '../components/ImageEditor.vue'
-import TemplateGenerator from '../components/TemplateGenerator.vue'
-import TemplateEditor from '../components/TemplateEditor.vue'
 import axios from 'axios'
 import { useStore } from 'vuex'
 const routes = [
@@ -22,19 +20,6 @@ const routes = [
         path: '/edit/:imageSrc',
         name: 'ImageEditor',
         component: ImageEditor,
-        props: true,
-        meta: { requiresAuth: true }
-    },
-    { 
-        path: '/templates',
-        name: 'TemplateGenerator',
-        component: TemplateGenerator,
-        meta: { requiresAuth: true }
-    },
-    { 
-        path: '/template-editor/:templateId',
-        name: 'TemplateEditor',
-        component: TemplateEditor,
         props: true,
         meta: { requiresAuth: true }
     }
