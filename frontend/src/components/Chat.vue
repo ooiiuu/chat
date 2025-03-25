@@ -137,7 +137,7 @@ export default {
           if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
             const newImageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
             this.imageSrcs.push(newImageSrc); // 将新图片 URL 添加到数组中
-            this.appendMessage({ role: 'assistant', content: '图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
+            this.appendMessage({ role: 'assistant', content: '背景图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
             this.scrollToBottom();
           } else {
             console.error('Image data not found or invalid format', imageData);
