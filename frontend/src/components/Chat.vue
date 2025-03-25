@@ -29,7 +29,12 @@
             生成背景
           </label>
         </div>
-        <textarea v-model="inputMessage" placeholder="Type your message..." :disabled="loading"></textarea>
+        <textarea 
+          v-model="inputMessage" 
+          placeholder="Type your message..." 
+          :disabled="loading"
+          @keydown="handleKeydown"
+        ></textarea>
         <button type="submit" :disabled="loading || !inputMessage.trim()">
           Send
         </button>
@@ -61,6 +66,19 @@ export default {
   },
   methods: {
     ...mapActions(['updateMessages', 'appendMessage']),
+    // 新增方法：处理键盘事件
+    handleKeydown(event) {
+      // 检查是否按下Enter键，并且没有同时按下Shift键（允许Shift+Enter换行）
+      if (event.key === 'Enter' && !event.shiftKey) {
+        // 阻止默认的换行行为
+        event.preventDefault();
+        // 检查消息是否为空，以及是否正在加载中
+        if (this.inputMessage.trim() && !this.loading) {
+          // 调用发送消息方法
+          this.sendMessage();
+        }
+      }
+    },
     scrollToBottom() {
       this.$nextTick(() => {
         const container = this.$refs.messagesContainer;
@@ -123,7 +141,7 @@ export default {
         const promptData = await removeThinkResponse.json();
         this.prompt = promptData.prompt; // 将返回的提示词保存到变量中
 
-        // 仅当选中“背景”选项时，才发送图像生成请求
+        // 仅当选中"背景"选项时，才发送图像生成请求
         if (this.selectedOption === '背景') {
           const imageResponse = await fetch('http://127.0.0.1:5000/image', {
             method: 'POST',
