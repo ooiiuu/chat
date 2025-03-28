@@ -4,6 +4,7 @@ import Chat from '../components/Chat.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import axios from 'axios'
 import { useStore } from 'vuex'
+
 const routes = [
     { 
         path: '/',
@@ -22,6 +23,25 @@ const routes = [
         component: ImageEditor,
         props: true,
         meta: { requiresAuth: true }
+    },
+    {
+        path: '/conversations',
+        name: 'ConversationHistory',
+        component: () => import('../views/ConversationHistory.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/conversations/:conversationId',
+        name: 'ConversationView',
+        component: Chat,  // 重用Chat组件
+        props: true,      // 传递路由参数作为props
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/search',
+        name: 'SearchHistory',
+        component: () => import('../views/SearchHistory.vue'),
+        meta: { requiresAuth: true }
     }
 ]
 
@@ -30,7 +50,7 @@ const router = createRouter({
     routes
 })
 
-// 路由守卫配置
+// 路由守卫配置保持不变
 router.beforeEach(async (to, from, next) => {
     const store = useStore()
     

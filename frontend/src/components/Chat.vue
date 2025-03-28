@@ -58,15 +58,21 @@ export default {
       selectedOption: '文案',
       showDialog: false,
       currentImageSrc: '',
-      messagesContainer: null
+      messagesContainer: null,
+      currentConversationId: null,
+      isNewConversation: true
     };
   },
   computed: {
-    ...mapState(['messages'])
+    ...mapState(['messages']),
+    // 从Vuex中获取当前用户ID
+    currentUserId() {
+      return this.$store.getters['auth/currentUser']?.id;
+    }
   },
   methods: {
     ...mapActions(['updateMessages', 'appendMessage']),
-    // 新增方法：处理键盘事件
+    // 处理键盘事件
     handleKeydown(event) {
       // 检查是否按下Enter键，并且没有同时按下Shift键（允许Shift+Enter换行）
       if (event.key === 'Enter' && !event.shiftKey) {
@@ -89,9 +95,86 @@ export default {
         }
       });
     },
+    // 创建新会话
+    async createConversation() {
+      if (!this.currentUserId) {
+        console.error('用户未登录');
+        return null;
+      }
+      
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/conversations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            title: "新会话",
+            user_id: this.currentUserId 
+          })
+        });
+        
+        const data = await response.json();
+        if (data.status === 'success') {
+          this.currentConversationId = data.conversation.id;
+          this.isNewConversation = false;
+          // 清空现有消息
+          this.updateMessages([]);
+          return data.conversation.id;
+        }
+      } catch (error) {
+        console.error('创建会话失败:', error);
+      }
+      return null;
+    },
+    
+    // 加载特定会话
+    async loadConversation(conversationId) {
+      if (!this.currentUserId) {
+        console.error('用户未登录');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/api/conversations/${conversationId}/messages?user_id=${this.currentUserId}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          this.currentConversationId = conversationId;
+          this.isNewConversation = false;
+          
+          // 转换消息格式以匹配应用中的格式
+          const messages = data.conversation.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            imageSrc: msg.has_image ? `data:image/png;base64,${msg.image_data}` : null
+          }));
+          
+          this.updateMessages(messages);
+        }
+      } catch (error) {
+        console.error('加载会话失败:', error);
+      }
+    },
+    
     async sendMessage() {
       if (!this.inputMessage.trim()) return;
-
+      
+      if (!this.currentUserId) {
+        console.error('用户未登录');
+        return;
+      }
+      
+      // 如果是新对话，先创建会话
+      let conversationId = this.currentConversationId;
+      if (this.isNewConversation) {
+        conversationId = await this.createConversation();
+        if (!conversationId) {
+          console.error('创建会话失败');
+          return;
+        }
+      }
+      
       const userMessage = this.inputMessage;
       this.appendMessage({ role: 'user', content: userMessage });
       this.scrollToBottom();
@@ -100,13 +183,18 @@ export default {
       this.imageLoading = this.selectedOption === '背景';
 
       try {
-        // Send text message
+        // 发送文本消息
         const textResponse = await fetch('http://127.0.0.1:5000/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ message: userMessage, option: this.selectedOption }) // 传递选项信息
+          body: JSON.stringify({ 
+            message: userMessage, 
+            option: this.selectedOption,
+            user_id: this.currentUserId,
+            conversation_id: conversationId
+          })
         });
 
         if (!textResponse.ok) {
@@ -125,7 +213,7 @@ export default {
           this.updateAssistantMessage(assistantMessage);
         }
 
-        // 新增: 将得到的消息发送给 remove_think 端点
+        // 将得到的消息发送给 remove_think 端点
         const removeThinkResponse = await fetch('http://127.0.0.1:5000/remove_think', {
           method: 'POST',
           headers: {
@@ -148,7 +236,11 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: this.prompt })
+            body: JSON.stringify({ 
+              message: this.prompt,
+              user_id: this.currentUserId,
+              conversation_id: conversationId
+            })
           });
 
           const imageData = await imageResponse.json();
@@ -198,11 +290,12 @@ export default {
       this.$router.push({ name: 'TemplateGenerator' });
     }
   },
-  // Chat.vue 中的 mounted 钩子
+  // 挂载时检查是否有会话ID参数
   mounted() {
+    // 更新消息
     this.updateMessages(this.messages);
-
-    // 检查 Vuex 中是否有编辑后的图片
+    
+    // 检查是否有编辑后的图片
     const editedImage = this.$store.state.editedImage;
     if (editedImage) {
       this.appendMessage({
@@ -211,8 +304,15 @@ export default {
         imageSrc: editedImage
       });
       this.scrollToBottom();
-      // 清除存储的图片，防止重复添加
       this.$store.dispatch('setEditedImage', null);
+    }
+    
+    // 加载指定的会话
+    const conversationId = this.$route.params.conversationId;
+    if (conversationId) {
+      this.loadConversation(conversationId);
+    } else {
+      this.isNewConversation = true;
     }
   }
 };

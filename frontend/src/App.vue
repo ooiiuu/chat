@@ -4,8 +4,9 @@
       <div class="header-container">
         <h1>AI 助手</h1>
         <nav class="main-nav">
-          <router-link to="/chat" class="nav-link">聊天</router-link>
-          <!-- <router-link to="/templates" class="nav-link">海报模板</router-link> -->
+          <router-link to="/chat" class="nav-link">新建会话</router-link>
+          <router-link to="/conversations" class="nav-link">历史会话</router-link>
+          <router-link to="/search" class="nav-link">搜索</router-link>
           <div class="user-menu" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
             <img src="/head1.png" alt="头像" class="avatar">
             <span class="username">{{ currentUser.username }}</span>

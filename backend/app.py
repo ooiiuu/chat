@@ -34,6 +34,29 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
+# ---------- 会话模型 ----------
+class Conversation(db.Model):
+    __tablename__ = 'conversations'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=True)  # 修改这行，改为nullable=True
+    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    updated_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+# ---------- 消息模型 ----------
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 添加这行
+    role = db.Column(db.String(20), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    has_image = db.Column(db.Boolean, default=None)
+    image_data = db.Column(db.Text, nullable=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=True)
+
+
 # ---------- 用户模型 ----------
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -218,11 +241,53 @@ def remove_think():
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    message = data.get('message')
+    message_content = data.get('message')
     option = data.get('option')
+    user_id = data.get('user_id')
+    conversation_id = data.get('conversation_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    # 检查会话是否存在且归属于指定用户
+    if conversation_id:
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user_id
+        ).first()
+        
+        if not conversation:
+            return jsonify({
+                "status": "error",
+                "message": "无效的会话ID"
+            }), 400
+    else:
+        # 如果没有提供会话ID，创建新会话
+        conversation = Conversation(
+            user_id=user_id,
+            title=f"会话 {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        db.session.add(conversation)
+        db.session.commit()
+        conversation_id = conversation.id
+    
+    # 保存用户消息到数据库
+    user_message = Message(
+        user_id=user_id,
+        conversation_id=conversation_id,
+        role="user",
+        content=message_content
+    )
+    db.session.add(user_message)
+    
+    # 更新会话的更新时间
+    conversation.updated_at = datetime.now()
+    db.session.commit()
+    
+    # 处理聊天逻辑
     if option == "文案":
         message = f"""
-【{message}】主题公益海报创作
+【{message_content}】主题公益海报创作
 Think环节要求：
 
 分析主题核心痛点，提取3个最具传播力的关键词
@@ -278,7 +343,7 @@ Output格式：
 不好："A detailed image of a cat sitting on a windowsill with a view of the city."
 好："cat, sitting, windowsill, city view"
 6. 避免使用否定词
-Stable Diffusion 对否定词（如“不”）处理不佳。尽量使用肯定的描述。
+Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的描述。
 示例：
 不好："A cat that is not sitting."
 好："cat, standing"
@@ -295,41 +360,95 @@ Stable Diffusion 对否定词（如“不”）处理不佳。尽量使用肯定
 示例：
 不好："猫， 坐着， 窗台， 城市景观"
 好："cat, sitting, windowsill, city view"
-
 """
-        message = f"根据文案'{message}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
+        message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
+    
     client = OpenAI(api_key=DEEP_API_KEY, base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": message},
-    ],
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": message},
+        ],
         stream=True  # 启用流式输出
     )
+    
     def generate():
+        accumulated_response = ""
+        
         for chunk in response:
             content = chunk.choices[0].delta.content
             if content is not None:
+                accumulated_response += content
                 yield content
+                
+        # 当响应结束时，保存AI回复到数据库
+        assistant_message = Message(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            role="assistant",
+            content=accumulated_response,
+            has_image=False
+        )
+        db.session.add(assistant_message)
+        print("assistant_message",assistant_message)
+        # 更新会话的更新时间
+        conversation.updated_at = datetime.now()
+        db.session.commit()
+    
     return Response(generate(), content_type='text/plain')
 
 @app.route('/image', methods=['POST'])
 def image():
     data = request.json
-    message = data.get('message')
+    prompt = data.get('message')
+    user_id = data.get('user_id')
+    conversation_id = data.get('conversation_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    # 验证会话归属
+    if conversation_id:
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=user_id
+        ).first()
+        
+        if not conversation:
+            return jsonify({
+                "status": "error",
+                "message": "无效的会话ID"
+            }), 400
     
     # 调用图像生成API
     api_url = URL+"/image"
-    response = requests.post(api_url, json={'prompt': message})
+    response = requests.post(api_url, json={'prompt': prompt})
     respond_data = response.json()
-    if response.status_code == 200:
+    
+    if response.status_code == 200 and respond_data.get("status") == "success":
+        # 保存图像数据到数据库
+        if conversation_id:
+            image_message = Message(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                role="assistant",
+                content="生成的图片",
+                has_image=True,
+                image_data=respond_data["respond"]["img_base64"]
+            )
+            db.session.add(image_message)
+            
+            # 更新会话的更新时间
+            conversation.updated_at = datetime.now()
+            db.session.commit()
+        
         return jsonify({
             "status": "success",
-            "message": "Data received successfully",
+            "message": "Image generated successfully",
             "respond": {
-              "img_base64":respond_data["respond"]["img_base64"]
-        }
+              "img_base64": respond_data["respond"]["img_base64"]
+            }
         })
     else:
         return jsonify({
@@ -563,7 +682,212 @@ def save_template():
             "message": f"模板保存失败: {str(e)}"
         }), 500
 
+# 获取用户历史会话列表
+@app.route('/api/conversations', methods=['GET'])
+def get_conversations():
+    # 从请求中获取用户ID
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    # 查询用户的所有会话，按更新时间排序
+    conversations = Conversation.query.filter_by(user_id=user_id).order_by(Conversation.updated_at.desc()).all()
+    
+    result = []
+    for conv in conversations:
+        # 获取每个会话的最后一条消息作为预览
+        last_message = Message.query.filter_by(conversation_id=conv.id).order_by(Message.created_at.desc()).first()
+        preview = last_message.content[:50] + "..." if last_message and len(last_message.content) > 50 else (last_message.content if last_message else "")
+        
+        result.append({
+            "id": conv.id,
+            "title": conv.title,
+            "created_at": conv.created_at,
+            "updated_at": conv.updated_at,
+            "preview": preview
+        })
+    
+    return jsonify({"status": "success", "conversations": result})
 
+# 获取特定会话的所有消息
+@app.route('/api/conversations/<int:conversation_id>/messages', methods=['GET'])
+def get_conversation_messages(conversation_id):
+    # 从请求中获取用户ID
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    # 验证会话属于当前用户
+    conversation = Conversation.query.filter_by(id=conversation_id, user_id=user_id).first()
+    if not conversation:
+        return jsonify({"status": "error", "message": "会话不存在或无权访问"}), 404
+    
+    # 获取会话中的所有消息，按时间排序
+    messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+    
+    result = []
+    for msg in messages:
+        message_data = {
+            "id": msg.id,
+            "role": msg.role,
+            "content": msg.content,
+            "created_at": msg.created_at
+        }
+        
+        # 如果消息包含图片
+        if msg.has_image and msg.image_data:
+            message_data["has_image"] = True
+            message_data["image_data"] = msg.image_data
+        
+        result.append(message_data)
+    
+    return jsonify({
+        "status": "success", 
+        "conversation": {
+            "id": conversation.id,
+            "title": conversation.title,
+            "created_at": conversation.created_at,
+            "messages": result
+        }
+    })
+
+# 创建新会话
+@app.route('/api/conversations', methods=['POST'])
+def create_conversation():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    title = data.get('title', f"会话 {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    conversation = Conversation(
+        user_id=user_id,
+        title=title
+    )
+    
+    db.session.add(conversation)
+    db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": "会话创建成功",
+        "conversation": {
+            "id": conversation.id,
+            "title": conversation.title,
+            "created_at": conversation.created_at
+        }
+    })
+
+# 更新会话标题
+@app.route('/api/conversations/<int:conversation_id>', methods=['PUT'])
+def update_conversation(conversation_id):
+    data = request.get_json()
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    conversation = Conversation.query.filter_by(id=conversation_id, user_id=user_id).first()
+    if not conversation:
+        return jsonify({"status": "error", "message": "会话不存在或无权访问"}), 404
+    
+    if 'title' in data:
+        conversation.title = data['title']
+        conversation.updated_at = datetime.now()
+        db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": "会话更新成功",
+        "conversation": {
+            "id": conversation.id,
+            "title": conversation.title,
+            "updated_at": conversation.updated_at
+        }
+    })
+
+# 删除会话
+@app.route('/api/conversations/<int:conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    conversation = Conversation.query.filter_by(id=conversation_id, user_id=user_id).first()
+    if not conversation:
+        return jsonify({"status": "error", "message": "会话不存在或无权访问"}), 404
+    
+    # 首先删除关联的所有消息
+    Message.query.filter_by(conversation_id=conversation_id).delete()
+    
+    # 然后删除会话本身
+    db.session.delete(conversation)
+    db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": "会话删除成功"
+    })
+
+# 搜索历史会话和消息
+@app.route('/api/search', methods=['GET'])
+def search_history():
+    user_id = request.args.get('user_id')
+    query = request.args.get('q', '')
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "缺少用户ID"}), 400
+    
+    if not query or len(query) < 2:
+        return jsonify({"status": "error", "message": "搜索关键词太短"}), 400
+    
+    # 搜索会话标题
+    conversations = Conversation.query.filter(
+        Conversation.user_id == user_id,
+        Conversation.title.like(f'%{query}%')
+    ).all()
+    
+    # 搜索消息内容
+    messages = Message.query.join(Conversation).filter(
+        Conversation.user_id == user_id,
+        Message.content.like(f'%{query}%')
+    ).all()
+    
+    # 组织搜索结果
+    conversation_results = []
+    for conv in conversations:
+        conversation_results.append({
+            "id": conv.id,
+            "title": conv.title,
+            "created_at": conv.created_at,
+            "match_type": "title"
+        })
+    
+    message_results = []
+    conv_ids = set()
+    for msg in messages:
+        if msg.conversation_id not in conv_ids:
+            conv = Conversation.query.get(msg.conversation_id)
+            message_results.append({
+                "conversation_id": msg.conversation_id,
+                "conversation_title": conv.title,
+                "message_preview": msg.content[:100] + "..." if len(msg.content) > 100 else msg.content,
+                "created_at": msg.created_at,
+                "match_type": "content"
+            })
+            conv_ids.add(msg.conversation_id)
+    
+    return jsonify({
+        "status": "success",
+        "results": {
+            "conversations": conversation_results,
+            "messages": message_results
+        }
+    })
 
 # ---------- 初始化应用 ----------
 if __name__ == '__main__':
