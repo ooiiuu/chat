@@ -4,7 +4,7 @@
       <div class="header-container">
         <h1>AI 助手</h1>
         <nav class="main-nav">
-          <router-link to="/chat" class="nav-link">新建会话</router-link>
+          <a href="#" @click.prevent="startNewChat" class="nav-link">新建会话</a>
           <router-link to="/conversations" class="nav-link">历史会话</router-link>
           <router-link to="/search" class="nav-link">搜索</router-link>
           <div class="user-menu" @mouseover="showDropdown = true" @mouseleave="showDropdown = false">
@@ -42,6 +42,16 @@ export default {
     const currentUser = computed(() => store.getters['auth/currentUser'])
     const showDropdown = ref(false)
     
+    const startNewChat = () => {
+      // 清除聊天记录和其他相关数据
+      store.commit('setMessages', []);
+      store.commit('SET_EDITED_IMAGE', null);
+      store.commit('SET_TEMPLATES', []);
+      store.commit('SET_CURRENT_TEMPLATE', null);
+      // 跳转到聊天页面
+      router.push('/chat');
+    }
+    
     const handleLogout = async () => {
   try {
     // 获取当前 Token
@@ -75,7 +85,8 @@ export default {
       isAuthenticated,
       currentUser,
       showDropdown,
-      handleLogout
+      handleLogout,
+      startNewChat
     }
   }
 }

@@ -123,6 +123,12 @@ export default {
 
         // 开始新会话
         const startNewConversation = () => {
+            // 清除聊天记录和其他相关数据
+            store.commit('setMessages', []);
+            store.commit('SET_EDITED_IMAGE', null);
+            store.commit('SET_TEMPLATES', []);
+            store.commit('SET_CURRENT_TEMPLATE', null);
+            // 跳转到聊天页面
             router.push('/chat');
         };
 
