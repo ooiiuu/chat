@@ -205,8 +205,15 @@ export default {
 
         // 格式化日期
         const formatDate = (dateString) => {
+            // console.log("dataString", dateString);
+            if (!dateString) return '';
             const date = new Date(dateString);
+            // console.log("date", date);
+            // 在这里减去8小时以抵消时区转换的影响
+            date.setHours(date.getHours() - 8);
+            // console.log("date (after -8h)", date);
             const now = new Date();
+            // console.log("now", now);
 
             // 今天的日期
             if (date.toDateString() === now.toDateString()) {
@@ -498,7 +505,8 @@ h1 {
         align-self: flex-end;
     }
 
-    .conversation-preview {  max-width: 100%;
+    .conversation-preview {
+        max-width: 100%;
     }
 }
 </style>

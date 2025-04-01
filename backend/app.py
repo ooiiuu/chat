@@ -26,13 +26,15 @@ class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, bytes):
             return obj.decode('utf-8')
+        elif isinstance(obj, datetime):
+            return obj.isoformat()  # 确保datetime以ISO格式返回
         return super().default(obj)
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 启用跨域带凭证
 app.json_encoder = CustomJSONEncoder
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/chat'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/chat?charset=utf8mb4'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
