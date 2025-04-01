@@ -343,7 +343,7 @@ Think环节要求：
 Output格式：
 [主题凝练] 用5字以内提炼核心主张
 [震撼标语] 15字内押韵口号+❗️表情强调
-[视觉隐喻] 提供2个符号化视觉元素建议（如：断裂的冰柱象征生态危机）
+[视觉隐喻] 提供1个符号化视觉元素建议（如：断裂的冰柱象征生态危机）
 [分层文案]
 主文案：30字内故事化叙述
 副文案：12字内行动呼吁
@@ -354,7 +354,7 @@ Output格式：
 输出：
 [主题凝练] 冰封倒计时
 [震撼标语] 每一滴融化，都在改写未来❗️
-[视觉隐喻] 沙漏中的冰川/温度计形状的裂缝
+[视觉隐喻] 沙漏中的冰川
 [分层文案]
 主：当格陵兰岛的冰盖消退速度比预期快3倍，我们的时间刻度正在失效
 副：降温行动需要57亿双手
@@ -404,7 +404,7 @@ Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的�
 好："cat, sitting, windowsill, city view"
 10、关键词不要重复
 """
-        message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
+        message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产海报的背景,{note}"
     
     client = OpenAI(api_key=DEEP_API_KEY, base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
