@@ -498,8 +498,7 @@ h1 {
         align-self: flex-end;
     }
 
-    .conversation-preview {
-        max-width: 100%;
+    .conversation-preview {  max-width: 100%;
     }
 }
 </style>
