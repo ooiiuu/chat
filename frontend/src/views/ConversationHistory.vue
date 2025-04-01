@@ -3,7 +3,7 @@
         <h1>历史会话</h1>
 
         <div class="search-box">
-            <input type="text" v-model="searchTerm" placeholder="搜索会话..." @input="searchConversations" />
+            <input type="text" v-model="searchTerm" placeholder="根据标题搜索会话..." @input="searchConversations" />
         </div>
 
         <div class="loading" v-if="loading">
