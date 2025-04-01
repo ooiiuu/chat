@@ -375,26 +375,25 @@ Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的�
     
     def generate():
         accumulated_response = ""
-        
-        for chunk in response:
-            content = chunk.choices[0].delta.content
-            if content is not None:
-                accumulated_response += content
-                yield content
-                
-        # 当响应结束时，保存AI回复到数据库
-        assistant_message = Message(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            role="assistant",
-            content=accumulated_response,
-            has_image=False
-        )
-        db.session.add(assistant_message)
-        print("assistant_message",assistant_message)
-        # 更新会话的更新时间
-        conversation.updated_at = datetime.now()
-        db.session.commit()
+        with app.app_context():  # 添加上下文
+            for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content is not None:
+                    accumulated_response += content
+                    yield content
+
+            # 保存AI回复到数据库
+            assistant_message = Message(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=accumulated_response,
+                has_image=False
+            )
+            db.session.add(assistant_message)
+            print("assistant_message", assistant_message)
+            conversation.updated_at = datetime.now()
+            db.session.commit()
     
     return Response(generate(), content_type='text/plain')
 
@@ -423,7 +422,12 @@ def image():
     
     # 调用图像生成API
     api_url = URL+"/image"
-    response = requests.post(api_url, json={'prompt': prompt})
+    headers = {
+        "ngrok-skip-browser-warning": "122131"
+    }
+    response = requests.post(api_url, headers=headers,json={'prompt': prompt})
+    # print("response.text", response.text)
+    # print("response.status_code", response.status_code)
     respond_data = response.json()
     
     if response.status_code == 200 and respond_data.get("status") == "success":
