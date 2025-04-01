@@ -404,7 +404,7 @@ Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的�
 好："cat, sitting, windowsill, city view"
 10、关键词不要重复
 """
-        message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
+        message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产海报的背景,{note}"
     
     client = OpenAI(api_key=DEEP_API_KEY, base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
