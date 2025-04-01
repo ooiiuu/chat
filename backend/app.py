@@ -116,6 +116,38 @@ class LoginForm(FlaskForm):
     password = PasswordField('密码', validators=[DataRequired()])
     submit = SubmitField('登录')
 
+def generate_conversation_title(messages):
+    if not messages or len(messages) < 2:
+        return f"会话 {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    
+    # 提取前两条消息
+    first_messages = messages[:2]
+    content_summary = "\n".join([f"{msg.role}: {msg.content}" for msg in first_messages])
+    
+    prompt = f"基于以下对话内容，请生成一个简短的、描述性的会话标题（不超过10个字）：\n\n{content_summary}"
+    
+    try:
+        client = OpenAI(api_key=DEEP_API_KEY, base_url="https://api.deepseek.com")
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "你是一个擅长总结和提炼关键信息的助手。"},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=30,
+            stream=False  # 不需要流式输出
+        )
+        
+        title = response.choices[0].message.content.strip()
+        # 限制标题长度，防止过长
+        if len(title) > 30:
+            title = title[:27] + "..."
+        return title
+    except Exception as e:
+        print(f"生成标题失败：{str(e)}")
+        return f"会话 {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+
 # ---------- 认证路由 ----------
 @login_manager.user_loader
 def load_user(user_id):
@@ -370,6 +402,7 @@ Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的�
 示例：
 不好："猫， 坐着， 窗台， 城市景观"
 好："cat, sitting, windowsill, city view"
+10、关键词不要重复
 """
         message = f"根据文案'{message_content}'体现出主题用英文给StableDiffusion写一段prompt提示词用于生产公益海报的背景,{note}"
     
@@ -392,18 +425,37 @@ Stable Diffusion 对否定词（如"不"）处理不佳。尽量使用肯定的�
                     accumulated_response += content
                     yield content
 
-            # 保存AI回复到数据库
-            assistant_message = Message(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                role="assistant",
-                content=accumulated_response,
-                has_image=False
-            )
-            db.session.add(assistant_message)
-            print("assistant_message", assistant_message)
-            conversation.updated_at = datetime.now()
-            db.session.commit()
+            # 在完成流式响应后，重新查询会话对象，确保它与当前会话绑定
+            with db.session.begin():
+                # 重新获取会话对象
+                current_conversation = db.session.get(Conversation, conversation_id)
+                
+                # 保存AI回复到数据库
+                assistant_message = Message(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=accumulated_response,
+                    has_image=False
+                )
+                db.session.add(assistant_message)
+                
+                # 更新会话的更新时间
+                current_conversation.updated_at = datetime.now()
+                
+                # 判断是否需要更新会话标题（仅在新创建的会话且回复完成后）
+                if current_conversation.title and "新会话" in current_conversation.title:
+                    # 获取此会话的所有消息
+                    messages = Message.query.filter_by(conversation_id=conversation_id).all()
+                    # 生成新标题
+                    try:
+                        new_title = generate_conversation_title(messages)
+                        current_conversation.title = new_title
+                    except Exception as e:
+                        print(f"生成标题出错: {str(e)}")
+                
+                # 提交事务
+                db.session.commit()
     
     return Response(generate(), content_type='text/plain')
 
