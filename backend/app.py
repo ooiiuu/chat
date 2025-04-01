@@ -21,8 +21,16 @@ load_dotenv()
 URL = os.getenv("API_URL")
 DEEP_API_KEY = os.getenv("DEEP_API_KEY")
 
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return obj.decode('utf-8')
+        return super().default(obj)
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 启用跨域带凭证
+app.json_encoder = CustomJSONEncoder
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/chat'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -743,7 +751,11 @@ def get_conversation_messages(conversation_id):
         # 如果消息包含图片
         if msg.has_image and msg.image_data:
             message_data["has_image"] = True
-            message_data["image_data"] = msg.image_data
+            # 处理bytes类型数据
+            if isinstance(msg.image_data, bytes):
+                message_data["image_data"] = msg.image_data.decode('utf-8')
+            else:
+                message_data["image_data"] = msg.image_data
         
         result.append(message_data)
     
