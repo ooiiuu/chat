@@ -536,6 +536,47 @@ def image():
 #             "message": f"Failed to generate image: {str(e)}"
 #         }), 500
 
+@app.route('/save-edited-image', methods=['POST'])
+def save_edited_image():
+    data = request.json
+    user_id = data.get('user_id')
+    conversation_id = data.get('conversation_id')
+    image_data = data.get('image_data')
+    
+    if not user_id or not conversation_id or not image_data:
+        return jsonify({"status": "error", "message": "缺少必要参数"}), 400
+    
+    # 验证会话归属
+    conversation = Conversation.query.filter_by(
+        id=conversation_id, 
+        user_id=user_id
+    ).first()
+    
+    if not conversation:
+        return jsonify({
+            "status": "error",
+            "message": "无效的会话ID"
+        }), 400
+    
+    # 保存编辑后的图片到数据库
+    edited_image_message = Message(
+        user_id=user_id,
+        conversation_id=conversation_id,
+        role="assistant",
+        content="编辑后的图片",
+        has_image=True,
+        image_data=image_data
+    )
+    db.session.add(edited_image_message)
+    conversation.updated_at = datetime.now()
+    db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": "编辑后的图片已保存"
+    })
+
+
 @app.route('/generate-template', methods=['POST'])
 def generate_template():
     data = request.json

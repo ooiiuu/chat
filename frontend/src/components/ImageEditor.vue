@@ -151,7 +151,37 @@ export default {
     goBack() {
       if (this.instance) {
         const dataUrl = this.instance.toDataURL();
-        // 使用 Vuex 存储编辑后的图片
+
+        // 从 dataUrl 中提取 base64 数据（去掉前缀如 "data:image/png;base64,"）
+        const base64Data = dataUrl.split(',')[1];
+
+        // 获取用户 ID 和会话 ID
+        const userId = this.$store.getters['auth/currentUser']?.id;
+        const conversationId = this.$route.query.conversationId;
+
+        if (userId && conversationId) {
+          // 发送请求保存编辑后的图片到数据库
+          fetch('http://127.0.0.1:5000/save-edited-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              conversation_id: conversationId,
+              image_data: base64Data
+            })
+          })
+            .then(response => response.json())
+            .then(data => {
+              console.log('保存编辑后图片成功:', data);
+            })
+            .catch(error => {
+              console.error('保存编辑后图片失败:', error);
+            });
+        }
+
+        // 使用 Vuex 存储编辑后的图片（用于前端显示）
         this.$store.dispatch('setEditedImage', dataUrl);
         this.$router.push({ name: 'Chat' });
       } else {

@@ -29,12 +29,8 @@
             生成背景
           </label>
         </div>
-        <textarea 
-          v-model="inputMessage" 
-          placeholder="Type your message..." 
-          :disabled="loading"
-          @keydown="handleKeydown"
-        ></textarea>
+        <textarea v-model="inputMessage" placeholder="Type your message..." :disabled="loading"
+          @keydown="handleKeydown"></textarea>
         <button type="submit" :disabled="loading || !inputMessage.trim()">
           Send
         </button>
@@ -101,19 +97,19 @@ export default {
         console.error('用户未登录');
         return null;
       }
-      
+
       try {
         const response = await fetch('http://127.0.0.1:5000/api/conversations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             title: "新会话",
-            user_id: this.currentUserId 
+            user_id: this.currentUserId
           })
         });
-        
+
         const data = await response.json();
         if (data.status === 'success') {
           this.currentConversationId = data.conversation.id;
@@ -127,44 +123,44 @@ export default {
       }
       return null;
     },
-    
+
     // 加载特定会话
     async loadConversation(conversationId) {
       if (!this.currentUserId) {
         console.error('用户未登录');
         return;
       }
-      
+
       try {
         const response = await fetch(`http://127.0.0.1:5000/api/conversations/${conversationId}/messages?user_id=${this.currentUserId}`);
         const data = await response.json();
-        
+
         if (data.status === 'success') {
           this.currentConversationId = conversationId;
           this.isNewConversation = false;
-          
+
           // 转换消息格式以匹配应用中的格式
           const messages = data.conversation.messages.map(msg => ({
             role: msg.role,
             content: msg.content,
             imageSrc: msg.has_image ? `data:image/png;base64,${msg.image_data}` : null
           }));
-          
+
           this.updateMessages(messages);
         }
       } catch (error) {
         console.error('加载会话失败:', error);
       }
     },
-    
+
     async sendMessage() {
       if (!this.inputMessage.trim()) return;
-      
+
       if (!this.currentUserId) {
         console.error('用户未登录');
         return;
       }
-      
+
       // 如果是新对话，先创建会话
       let conversationId = this.currentConversationId;
       if (this.isNewConversation) {
@@ -174,7 +170,7 @@ export default {
           return;
         }
       }
-      
+
       const userMessage = this.inputMessage;
       this.appendMessage({ role: 'user', content: userMessage });
       this.scrollToBottom();
@@ -189,8 +185,8 @@ export default {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ 
-            message: userMessage, 
+          body: JSON.stringify({
+            message: userMessage,
             option: this.selectedOption,
             user_id: this.currentUserId,
             conversation_id: conversationId
@@ -236,7 +232,7 @@ export default {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               message: this.prompt,
               user_id: this.currentUserId,
               conversation_id: conversationId
@@ -280,7 +276,12 @@ export default {
     },
     editImage(imageSrc) {
       const encodedImageSrc = encodeURIComponent(imageSrc);
-      this.$router.push({ name: 'ImageEditor', params: { imageSrc: encodedImageSrc } });
+      const conversationId = this.currentConversationId || this.$route.params.conversationId;
+      this.$router.push({
+        name: 'ImageEditor',
+        params: { imageSrc: encodedImageSrc },
+        query: { conversationId: conversationId }
+      });
     },
     closeDialog() {
       this.showDialog = false;
@@ -294,7 +295,7 @@ export default {
   mounted() {
     // 更新消息
     this.updateMessages(this.messages);
-    
+
     // 检查是否有编辑后的图片
     const editedImage = this.$store.state.editedImage;
     if (editedImage) {
@@ -306,7 +307,7 @@ export default {
       this.scrollToBottom();
       this.$store.dispatch('setEditedImage', null);
     }
-    
+
     // 加载指定的会话
     const conversationId = this.$route.params.conversationId;
     if (conversationId) {
@@ -331,7 +332,8 @@ export default {
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px); /* 调整高度以适应头部和页脚 */
+  height: calc(100vh - 60px);
+  /* 调整高度以适应头部和页脚 */
   gap: 24px;
   padding: 20px;
   background-color: #f8f9fa;
@@ -503,7 +505,8 @@ img {
 @media (max-width: 768px) {
   .chat-container {
     flex-direction: column;
-    height: calc(100vh - 60px); /* 调整高度以适应头部和页脚 */
+    height: calc(100vh - 60px);
+    /* 调整高度以适应头部和页脚 */
   }
 
   button {
