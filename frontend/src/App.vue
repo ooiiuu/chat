@@ -88,7 +88,10 @@ export default {
       handleLogout,
       startNewChat
     }
-  }
+  },
+  mounted() {
+  document.title = "AI 助手 - 公益海报智能创作平台";
+}
 }
 </script>
 
