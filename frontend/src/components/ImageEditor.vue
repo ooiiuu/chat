@@ -1,20 +1,31 @@
 <template>
   <div class="editor-container">
-    <button @click="goBack" class="back-button">保存并返回</button>
-    <button @click="cancel" class="cancel-button">取消</button>
-    
+    <div class="editor-header">
+      <button @click="goBack" class="back-button">保存并返回</button>
+      <button @click="cancel" class="cancel-button">取消</button>
+    </div>
+
     <div id="tui-image-editor"></div>
-    
-    <!-- 文字添加控制面板移到底部，增加字体大小控制 -->
+
+    <!-- 文字添加控制面板在底部与编辑器同层 -->
     <div class="text-controls-bottom">
-      <input v-model="textContent" placeholder="输入要添加的文字" class="text-input" />
-      <div class="coordinates-inputs">
-        <label>X: <input type="number" v-model.number="textX" class="coord-input" /></label>
-        <label>Y: <input type="number" v-model.number="textY" class="coord-input" /></label>
-        <!-- 添加字体大小控制 -->
-        <label>字号: <input type="number" v-model.number="fontSize" min="10" max="200" class="size-input" /></label>
+      <div class="text-controls-tabs">
+        <div v-for="(tab, index) in ['文字1', '文字2', '文字3', '文字4', '文字5']" :key="index"
+          :class="['tab', { active: activeTextTab === index }]" @click="activeTextTab = index">
+          {{ tab }}
+        </div>
       </div>
-      <button @click="addTextAtCoordinates" class="add-text-btn">添加文字</button>
+
+      <div class="text-control-content">
+        <input v-model="textSettings[activeTextTab].content" placeholder="输入要添加的文字" class="text-input" />
+        <div class="coordinates-inputs">
+          <label>X: <input type="number" v-model.number="textSettings[activeTextTab].x" class="coord-input" /></label>
+          <label>Y: <input type="number" v-model.number="textSettings[activeTextTab].y" class="coord-input" /></label>
+          <label>字号: <input type="number" v-model.number="textSettings[activeTextTab].fontSize" min="10" max="200"
+              class="size-input" /></label>
+        </div>
+        <button @click="addTextAtCoordinates" class="add-text-btn">添加文字{{ activeTextTab + 1 }}</button>
+      </div>
     </div>
   </div>
 </template>
@@ -112,10 +123,15 @@ export default {
   data() {
     return {
       instance: null,
-      textContent: '公益海报文字123',  // 默认文字内容
-      textX: 100,                 // 默认X坐标
-      textY: 100,                 // 默认Y坐标
-      fontSize: 40,               // 默认字体大小
+      activeTextTab: 0,
+      // 五段文字的设置，每段都有独立的内容、位置和字号
+      textSettings: [
+        { content: '公益海报主标题', x: 200, y: 100, fontSize: 50 },
+        { content: '公益海报副标题', x: 200, y: 170, fontSize: 35 },
+        { content: '宣传口号', x: 200, y: 250, fontSize: 30 },
+        { content: '联系方式', x: 200, y: 400, fontSize: 20 },
+        { content: '活动时间地点', x: 200, y: 450, fontSize: 18 }
+      ]
     };
   },
   mounted() {
@@ -141,13 +157,13 @@ export default {
             initMenu: "draw",
             menuBarPosition: "bottom",
             locale: locale_zh,
-            
+
             // 添加这些配置选项来隐藏顶部的工具栏
             uiSize: {
               width: '100%',
               height: '100%'
             },
-            
+
             // 隐藏顶部的标题和图标
             theme: {
               'header.display': 'none',      // 隐藏整个顶部标题栏
@@ -168,7 +184,13 @@ export default {
           }
         }
       );
-      
+      // 调整顶部工具栏位置
+      document.querySelector('.tui-image-editor-header').style.top = '30px';
+
+      // 调整画布位置
+      document.querySelector('.tui-image-editor-main').style.marginTop = '60px';
+      document.querySelector('.tui-image-editor-main').style.paddingBottom = '160px';  // 防止遮挡
+      document.querySelector('.lower-canvas').style.paddingBottom = '160px';  // 针对画布层
       // 使用 nextTick 确保 DOM 已更新
       this.$nextTick(() => {
         // 延迟一小段时间再加载实际图片
@@ -183,38 +205,46 @@ export default {
         }, 100);
       });
     },
-    
-    // 在指定坐标添加文字，使用用户指定的字体大小
+
+    // 在指定坐标添加文字，使用当前选中的文字设置
     addTextAtCoordinates() {
-      if (!this.instance || !this.textContent.trim()) return;
-      
+      if (!this.instance) return;
+
+      // 获取当前选中的文字设置
+      const currentTextSetting = this.textSettings[this.activeTextTab];
+
+      if (!currentTextSetting.content.trim()) {
+        console.warn('文字内容不能为空');
+        return;
+      }
+
       // 停止所有绘图模式
       this.instance.stopDrawingMode();
       this.instance.changeSelectableAll(true);
-      
+
       // 限制字体大小范围
-      const fontSize = Math.min(Math.max(this.fontSize, 10), 200);
-      
+      const fontSize = Math.min(Math.max(currentTextSetting.fontSize, 10), 200);
+
       // 文字样式配置
       const textOptions = {
         styles: {
           fill: '#ffffff',          // 文字颜色：白色
-          fontSize: fontSize,       // 使用用户设置的字体大小
+          fontSize: fontSize,       // 使用设置的字体大小
           fontWeight: 'bold',       // 粗体
           textAlign: 'center',      // 居中对齐
           stroke: '#000000',        // 描边颜色：黑色
           strokeWidth: 2            // 描边宽度
         },
         position: {
-          x: this.textX,            // 使用指定的X坐标
-          y: this.textY             // 使用指定的Y坐标
+          x: currentTextSetting.x,  // 使用指定的X坐标
+          y: currentTextSetting.y   // 使用指定的Y坐标
         }
       };
-      
+
       // 添加文字到画布
-      this.instance.addText(this.textContent, textOptions);
+      this.instance.addText(currentTextSetting.content, textOptions);
     },
-    
+
     goBack() {
       if (this.instance) {
         const dataUrl = this.instance.toDataURL();
@@ -255,7 +285,7 @@ export default {
         this.$router.push({ name: 'Chat' });
       }
     },
-    
+
     cancel() {
       this.$router.push({ name: 'Chat' });
     }
@@ -275,14 +305,19 @@ export default {
 #tui-image-editor {
   flex: 1;
   width: 100%;
-  height: calc(100vh - 60px); /* 减去底部控制面板的高度 */
+  height: calc(100vh - 60pxpx);
+  /* 留出底部空间给控制面板 */
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-bottom: 1px solid #ddd;
 }
 
 .back-button {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
   padding: 5px 10px;
   background-color: #2196f3;
   color: white;
@@ -292,10 +327,6 @@ export default {
 }
 
 .cancel-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
   padding: 5px 10px;
   background-color: #f44336;
   color: white;
@@ -306,19 +337,43 @@ export default {
 
 /* 底部文字控制面板样式 */
 .text-controls-bottom {
-  position: fixed;
+  position: relative;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  width: 100%;
+  background-color: #f5f5f5;
+  border-top: 1px solid #ddd;
+  padding: 10px;
+  height: 150px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+}
+
+.text-controls-tabs {
+  display: flex;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab {
+  padding: 8px 15px;
+  margin-right: 5px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  background-color: #f5f5f5;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.text-control-content {
+  display: flex;
   align-items: center;
   gap: 10px;
-  background-color: rgba(255, 255, 255, 0.95);
-  padding: 10px;
-  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-  height: 50px;
 }
 
 .text-input {
