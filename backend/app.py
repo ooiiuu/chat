@@ -843,6 +843,96 @@ def search_history():
         }
     })
 
+def extract_info(text):
+    # 创建一个字典来存储提取的信息
+    extracted_info = {}
+    
+    # 提取[主题凝练]后面的文字
+    try:
+        start_index = text.find("[主题凝练]") + len("[主题凝练]")
+        end_index = text.find("[", start_index)
+        theme = text[start_index:end_index].strip()
+        extracted_info["主题凝练"] = theme
+    except:
+        extracted_info["主题凝练"] = "未找到"
+    
+    # 提取[震撼标语]后面的文字
+    try:
+        start_index = text.find("[震撼标语]") + len("[震撼标语]")
+        end_index = text.find("[", start_index)
+        slogan = text[start_index:end_index].strip()
+        extracted_info["震撼标语"] = slogan
+    except:
+        extracted_info["震撼标语"] = "未找到"
+    
+    # 提取[分层文案]主、副、数据
+    try:
+        start_index = text.find("[分层文案]") + len("[分层文案]")
+        layered_text = text[start_index:]
+        
+        # 提取主要文案
+        main_start = layered_text.find("主：") + len("主：")
+        main_end = layered_text.find("副：")
+        main_text = layered_text[main_start:main_end].strip()
+        extracted_info["分层文案-主"] = main_text
+        
+        # 提取副文案
+        sub_start = layered_text.find("副：") + len("副：")
+        sub_end = layered_text.find("数据：")
+        sub_text = layered_text[sub_start:sub_end].strip()
+        extracted_info["分层文案-副"] = sub_text
+        
+        # 提取数据文案 - 只提取到下一个部分的开始
+        data_start = layered_text.find("数据：") + len("数据：")
+        next_section = layered_text.find("情感共鸣点设计：", data_start)
+        if next_section != -1:
+            data_text = layered_text[data_start:next_section].strip()
+        else:
+            # 尝试其他可能的结束标记
+            possible_ends = ["情感", "叙事", "场景"]
+            for end in possible_ends:
+                pos = layered_text.find(end, data_start)
+                if pos != -1:
+                    next_section = pos
+                    break
+            
+            if next_section != -1:
+                data_text = layered_text[data_start:next_section].strip()
+            else:
+                # 如果找不到结束标记，取一个合理长度
+                data_text = layered_text[data_start:data_start+100].strip()
+        
+        extracted_info["分层文案-数据"] = data_text
+    except Exception as e:
+        extracted_info["分层文案"] = f"提取分层文案时出错: {str(e)}"
+    
+    return extracted_info
+
+
+# 提取文案中的内容
+@app.route('/extract', methods=['POST'])
+def extract():
+    try:
+        # 首先尝试从JSON中获取文本
+        if request.is_json:
+            data = request.get_json()
+            text = data.get('text', '')
+        else:
+            # 如果不是JSON，则从表单数据中获取
+            text = request.form.get('text', '')
+        
+        if not text:
+            return jsonify({'error': '请提供文本内容'}), 400
+        
+        # 提取信息
+        result = extract_info(text)
+        
+        # 返回JSON格式的结果
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': f'处理错误: {str(e)}'}), 500
+
+
 # ---------- 初始化应用 ----------
 if __name__ == '__main__':
     with app.app_context():
