@@ -1,8 +1,21 @@
 <template>
-  <div>
+  <div class="editor-container">
     <button @click="goBack" class="back-button">保存并返回</button>
     <button @click="cancel" class="cancel-button">取消</button>
+    
     <div id="tui-image-editor"></div>
+    
+    <!-- 文字添加控制面板移到底部，增加字体大小控制 -->
+    <div class="text-controls-bottom">
+      <input v-model="textContent" placeholder="输入要添加的文字" class="text-input" />
+      <div class="coordinates-inputs">
+        <label>X: <input type="number" v-model.number="textX" class="coord-input" /></label>
+        <label>Y: <input type="number" v-model.number="textY" class="coord-input" /></label>
+        <!-- 添加字体大小控制 -->
+        <label>字号: <input type="number" v-model.number="fontSize" min="10" max="200" class="size-input" /></label>
+      </div>
+      <button @click="addTextAtCoordinates" class="add-text-btn">添加文字</button>
+    </div>
   </div>
 </template>
 
@@ -91,8 +104,6 @@ import { useRoute } from 'vue-router';
 export default {
   setup() {
     const route = useRoute();
-    // console.log('Received imageSrc:', route.params.imageSrc);
-
     return {
       imageSrc: route.params.imageSrc
     }
@@ -101,10 +112,13 @@ export default {
   data() {
     return {
       instance: null,
+      textContent: '公益海报文字123',  // 默认文字内容
+      textX: 100,                 // 默认X坐标
+      textY: 100,                 // 默认Y坐标
+      fontSize: 40,               // 默认字体大小
     };
   },
   mounted() {
-    // console.log('Received imageSrc:', this.imageSrc);
     this.init();
   },
   methods: {
@@ -124,16 +138,24 @@ export default {
               path: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // 使用一个1x1像素的透明图片
               name: "SampleImage",
             },
-            // ... 其他配置保持不变
             initMenu: "draw",
             menuBarPosition: "bottom",
             locale: locale_zh,
           },
-          // ... 其他配置保持不变
           cssMaxWidth: window.innerWidth,
-          cssMaxHeight: window.innerHeight - 100,
+          cssMaxHeight: window.innerHeight - 60, // 减小高度，为底部控制面板留出空间
+          text: {
+            styles: {
+              fill: '#ffffff',      // 默认文字颜色：白色
+              stroke: '#000000',    // 默认描边颜色：黑色
+              strokeWidth: 2,       // 默认描边宽度
+              fontSize: 40,         // 默认字体大小
+              fontWeight: 'bold',   // 默认粗体
+            }
+          }
         }
       );
+      
       // 使用 nextTick 确保 DOM 已更新
       this.$nextTick(() => {
         // 延迟一小段时间再加载实际图片
@@ -148,6 +170,38 @@ export default {
         }, 100);
       });
     },
+    
+    // 在指定坐标添加文字，使用用户指定的字体大小
+    addTextAtCoordinates() {
+      if (!this.instance || !this.textContent.trim()) return;
+      
+      // 停止所有绘图模式
+      this.instance.stopDrawingMode();
+      this.instance.changeSelectableAll(true);
+      
+      // 限制字体大小范围
+      const fontSize = Math.min(Math.max(this.fontSize, 10), 200);
+      
+      // 文字样式配置
+      const textOptions = {
+        styles: {
+          fill: '#ffffff',          // 文字颜色：白色
+          fontSize: fontSize,       // 使用用户设置的字体大小
+          fontWeight: 'bold',       // 粗体
+          textAlign: 'center',      // 居中对齐
+          stroke: '#000000',        // 描边颜色：黑色
+          strokeWidth: 2            // 描边宽度
+        },
+        position: {
+          x: this.textX,            // 使用指定的X坐标
+          y: this.textY             // 使用指定的Y坐标
+        }
+      };
+      
+      // 添加文字到画布
+      this.instance.addText(this.textContent, textOptions);
+    },
+    
     goBack() {
       if (this.instance) {
         const dataUrl = this.instance.toDataURL();
@@ -188,23 +242,27 @@ export default {
         this.$router.push({ name: 'Chat' });
       }
     },
+    
     cancel() {
       this.$router.push({ name: 'Chat' });
     }
   }
 };
-
 </script>
 
 <style scoped>
-div {
+.editor-container {
+  position: relative;
   height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 #tui-image-editor {
-  height: 100%;
+  flex: 1;
   width: 100%;
+  height: calc(100vh - 60px); /* 减去底部控制面板的高度 */
 }
 
 .back-button {
@@ -231,5 +289,62 @@ div {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* 底部文字控制面板样式 */
+.text-controls-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 10px;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  height: 50px;
+}
+
+.text-input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 200px;
+}
+
+.coordinates-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.coord-input {
+  width: 60px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.size-input {
+  width: 60px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.add-text-btn {
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-text-btn:hover {
+  background-color: #45a049;
 }
 </style>
