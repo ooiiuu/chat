@@ -141,6 +141,19 @@ export default {
             initMenu: "draw",
             menuBarPosition: "bottom",
             locale: locale_zh,
+            
+            // 添加这些配置选项来隐藏顶部的工具栏
+            uiSize: {
+              width: '100%',
+              height: '100%'
+            },
+            
+            // 隐藏顶部的标题和图标
+            theme: {
+              'header.display': 'none',      // 隐藏整个顶部标题栏
+              'loadButton.display': 'none',  // 隐藏加载按钮
+              'downloadButton.display': 'none' // 隐藏下载按钮  
+            }
           },
           cssMaxWidth: window.innerWidth,
           cssMaxHeight: window.innerHeight - 60, // 减小高度，为底部控制面板留出空间
@@ -163,7 +176,7 @@ export default {
           this.instance.loadImageFromURL(decodedImageSrc, 'SampleImage').then(() => {
             console.log('Image loaded successfully');
             // 确保图片加载后再调整UI
-            document.getElementsByClassName("tui-image-editor-main")[0].style.top = "45px";
+            document.getElementsByClassName("tui-image-editor-main")[0].style.top = "0";
           }).catch(err => {
             console.error('Failed to load image:', err);
           });
@@ -346,5 +359,23 @@ export default {
 
 .add-text-btn:hover {
   background-color: #45a049;
+}
+
+/* 添加深度选择器强制隐藏顶部元素 */
+:deep(.tui-image-editor-header) {
+  display: none !important;
+}
+
+:deep(.tui-image-editor-main) {
+  top: 0 !important;
+  padding-top: 0 !important;
+}
+
+:deep(.tie-btn-load) {
+  display: none !important;
+}
+
+:deep(.tie-btn-download) {
+  display: none !important;
 }
 </style>
