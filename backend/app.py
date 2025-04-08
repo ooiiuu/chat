@@ -499,7 +499,7 @@ def image():
                 user_id=user_id,
                 conversation_id=conversation_id,
                 role="assistant",
-                content="生成的图片",
+                content="背景图片已生成",
                 has_image=True,
                 image_data=respond_data["respond"]["img_base64"]
             )
@@ -590,13 +590,13 @@ def image():
 #             "message": f"Failed to generate image: {str(e)}"
 #         }), 500
 
-@app.route('/save-edited-image', methods=['POST'])
-def save_edited_image():
+@app.route('/save-image', methods=['POST'])
+def save_image():
     data = request.json
     user_id = data.get('user_id')
     conversation_id = data.get('conversation_id')
     image_data = data.get('image_data')
-    
+    content = data.get('content')
     if not user_id or not conversation_id or not image_data:
         return jsonify({"status": "error", "message": "缺少必要参数"}), 400
     
@@ -617,7 +617,7 @@ def save_edited_image():
         user_id=user_id,
         conversation_id=conversation_id,
         role="assistant",
-        content="编辑后的图片",
+        content=content, # 编辑后的内容
         has_image=True,
         image_data=image_data
     )

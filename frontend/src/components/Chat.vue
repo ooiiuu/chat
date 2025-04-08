@@ -262,13 +262,13 @@ export default {
               role: 'assistant',
               content: '背景图片已生成',
               imageSrc: newImageSrc
-            }); 
+            });
             this.scrollToBottom();
             // 如果启用了自动添加文案选项
             if (this.autoAddText) {
               // 调用自动添加文案方法
               await this.autoAddCopywritingToImage(newImageSrc, userMessage);
-            } 
+            }
           } else {
             console.error('Image data not found or invalid format', imageData);
             this.appendMessage({ role: 'assistant', content: '图片生成失败' });
@@ -326,6 +326,9 @@ export default {
           this.textStyle || 'classic' // 使用用户选择的样式，默认为经典
         );
 
+        // 保存处理后的图片到数据库
+        await this.saveProcessedImage(resultImageSrc);
+
         // 将处理后的图像添加到消息中
         this.appendMessage({
           role: 'assistant',
@@ -347,6 +350,49 @@ export default {
           content: '添加文案到图片时出错，您可以尝试手动编辑'
         });
         return null;
+      }
+    },
+
+    // 新增方法: 保存处理后的图片到数据库
+    async saveProcessedImage(imageDataUrl) {
+      try {
+        // 从 dataUrl 中提取 base64 数据（去掉前缀如 "data:image/png;base64,"）
+        const base64Data = imageDataUrl.split(',')[1];
+
+        // 获取用户 ID 和会话 ID
+        const userId = this.currentUserId;
+        const conversationId = this.currentConversationId;
+
+        if (!userId || !conversationId) {
+          console.error('保存图片失败: 缺少用户ID或会话ID');
+          return false;
+        }
+
+        // 发送请求保存图片到数据库
+        const response = await fetch('http://127.0.0.1:5000/save-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            conversation_id: conversationId,
+            image_data: base64Data,
+            content: '已自动添加文案到图片上',
+          })
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          console.log('处理后的图片已保存到数据库');
+          return true;
+        } else {
+          console.error('保存图片到数据库失败:', result.message);
+          return false;
+        }
+      } catch (error) {
+        console.error('保存处理后图片时出错:', error);
+        return false;
       }
     }
   },

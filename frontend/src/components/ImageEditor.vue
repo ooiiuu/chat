@@ -258,7 +258,7 @@ export default {
 
         if (userId && conversationId) {
           // 发送请求保存编辑后的图片到数据库
-          fetch('http://127.0.0.1:5000/save-edited-image', {
+          fetch('http://127.0.0.1:5000/save-image', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -266,7 +266,8 @@ export default {
             body: JSON.stringify({
               user_id: userId,
               conversation_id: conversationId,
-              image_data: base64Data
+              image_data: base64Data,
+              content: '编辑后的图片' // 可以根据需要修改内容
             })
           })
             .then(response => response.json())
