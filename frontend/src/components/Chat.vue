@@ -259,7 +259,7 @@ export default {
             // 如果启用了自动添加文案选项
             if (this.autoAddText) {
               // 调用自动添加文案方法
-              await this.autoAddCopywritingToImage(newImageSrc, assistantMessage);
+              await this.autoAddCopywritingToImage(newImageSrc, userMessage);
             } else {
               // 原有的代码：直接显示图片
               this.imageSrcs.push(newImageSrc);
