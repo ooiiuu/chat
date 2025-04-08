@@ -28,6 +28,18 @@
             <input type="radio" v-model="selectedOption" value="背景" :disabled="loading || imageLoading" />
             生成背景
           </label>
+          <label class="auto-text-option">
+            <input type="checkbox" v-model="autoAddText" :disabled="loading || imageLoading" />
+            自动添加文案到图片
+          </label>
+
+          <div v-if="autoAddText" class="text-style-options">
+            <select v-model="textStyle">
+              <option value="classic">经典样式</option>
+              <option value="modern">现代样式</option>
+              <option value="minimalist">极简样式</option>
+            </select>
+          </div>
         </div>
         <textarea v-model="inputMessage" placeholder="Type your message..." :disabled="loading"
           @keydown="handleKeydown"></textarea>
@@ -56,7 +68,9 @@ export default {
       currentImageSrc: '',
       messagesContainer: null,
       currentConversationId: null,
-      isNewConversation: true
+      isNewConversation: true,
+      autoAddText: true, // 是否自动添加文案
+      textStyle: 'classic' // 文本样式预设
     };
   },
   computed: {
@@ -242,8 +256,19 @@ export default {
           const imageData = await imageResponse.json();
           if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
             const newImageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
-            this.imageSrcs.push(newImageSrc); // 将新图片 URL 添加到数组中
-            this.appendMessage({ role: 'assistant', content: '背景图片已生成', imageSrc: newImageSrc }); // 添加带有图片的消息
+            // 如果启用了自动添加文案选项
+            if (this.autoAddText) {
+              // 调用自动添加文案方法
+              await this.autoAddCopywritingToImage(newImageSrc, assistantMessage);
+            } else {
+              // 原有的代码：直接显示图片
+              this.imageSrcs.push(newImageSrc);
+              this.appendMessage({
+                role: 'assistant',
+                content: '背景图片已生成',
+                imageSrc: newImageSrc
+              });
+            }
             this.scrollToBottom();
           } else {
             console.error('Image data not found or invalid format', imageData);
@@ -289,6 +314,41 @@ export default {
     },
     goToTemplateGenerator() {
       this.$router.push({ name: 'TemplateGenerator' });
+    },
+    async autoAddCopywritingToImage(imageSrc, copywritingText) {
+      try {
+        // 引入图像处理服务
+        const imageService = await import('@/services/imageService');
+
+        // 使用默认的"经典"布局风格处理图像
+        const resultImageSrc = await imageService.processImageWithText(
+          imageSrc,
+          copywritingText,
+          this.textStyle || 'classic' // 使用用户选择的样式，默认为经典
+        );
+
+        // 将处理后的图像添加到消息中
+        this.appendMessage({
+          role: 'assistant',
+          content: '已自动添加文案到图片上',
+          imageSrc: resultImageSrc
+        });
+
+        // 滚动到底部显示新消息
+        this.scrollToBottom();
+
+        // 保存处理后的图像URL
+        this.processedImageSrc = resultImageSrc;
+
+        return resultImageSrc;
+      } catch (error) {
+        console.error('自动添加文案到图片失败:', error);
+        this.appendMessage({
+          role: 'assistant',
+          content: '添加文案到图片时出错，您可以尝试手动编辑'
+        });
+        return null;
+      }
     }
   },
   // 挂载时检查是否有会话ID参数
@@ -532,5 +592,13 @@ img {
 
 .image-options button:hover {
   background: #1976d2;
+}
+
+.auto-text-option {
+  margin-left: 20px;
+}
+
+.text-style-options {
+  margin-top: 10px;
 }
 </style>

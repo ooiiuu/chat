@@ -288,6 +288,95 @@ export default {
 
     cancel() {
       this.$router.push({ name: 'Chat' });
+    },
+    autoAddCopywritingToImage(imageData, copywritingText) {
+      // 解析文案内容
+      const textParts = extractCopywritingParts(copywritingText);
+
+      // 加载图片
+      const img = new Image();
+      img.src = imageData;
+
+      img.onload = () => {
+        // 创建Canvas绘制图片和文字
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // 获取文字布局
+        const layout = autoLayoutText(img, textParts);
+
+        // 绘制各部分文字
+        this.drawText(ctx, textParts.mainTitle, layout.mainTitle);
+        this.drawText(ctx, textParts.slogan, layout.slogan);
+        this.drawText(ctx, textParts.mainText, layout.mainText);
+        this.drawText(ctx, textParts.subText, layout.subText);
+        this.drawText(ctx, textParts.dataText, layout.dataText);
+
+        // 转换为DataURL并更新图片
+        const resultImageData = canvas.toDataURL('image/png');
+        this.updateFinalImage(resultImageData);
+      };
+    },
+
+    // 绘制文字函数
+    drawText(ctx, text, style) {
+      if (!text) return;
+
+      ctx.font = `${style.fontWeight || 'normal'} ${style.fontStyle || 'normal'} ${style.fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = style.color;
+      ctx.textAlign = style.textAlign || 'left';
+      ctx.textBaseline = 'middle';
+
+      // 如果文字过长，自动换行
+      if (style.maxWidth) {
+        this.wrapText(ctx, text, style.x, style.y, style.maxWidth, style.fontSize * 1.2);
+      } else {
+        // 添加描边效果提高可读性
+        ctx.strokeStyle = style.color === '#ffffff' ? '#000000' : '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.strokeText(text, style.x, style.y);
+        ctx.fillText(text, style.x, style.y);
+      }
+    },
+
+    // 文字自动换行
+    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      let offsetY = 0;
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+
+        if (testWidth > maxWidth && n > 0) {
+          // 添加描边效果提高可读性
+          ctx.strokeStyle = ctx.fillStyle === '#ffffff' ? '#000000' : '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.strokeText(line, x, y + offsetY);
+          ctx.fillText(line, x, y + offsetY);
+
+          line = words[n] + ' ';
+          offsetY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+
+      // 绘制最后一行
+      ctx.strokeText(line, x, y + offsetY);
+      ctx.fillText(line, x, y + offsetY);
+    },
+
+    // 更新最终图片
+    updateFinalImage(imageData) {
+      // 更新到编辑器或保存结果
+      this.finalImageData = imageData;
     }
   }
 };
