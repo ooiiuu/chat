@@ -93,7 +93,7 @@ export function getLayoutConfig(styleName, image) {
 export function analyzeImage(image) {
     // 创建临时canvas来分析图片
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });;
 
     // 设置canvas尺寸为图片尺寸
     canvas.width = image.width;
@@ -319,10 +319,16 @@ export function findOptimalTextPositions(imageAnalysis, textParts) {
 
         // 计算区域中心点
         const region = bestRegion.region;
+        // 定义一个临时变量或直接使用-1表示未找到
+        let regionIndexPosition = -1;
+        if (bestRegion && typeof bestRegion.index !== 'undefined') {
+            regionIndexPosition = preferredRegions.indexOf(bestRegion.index);
+        }
+
         positions[key] = {
             x: region.x + region.width / 2,
             y: region.y + region.height / 2 + (height * yOffset || 0),
-            regionIndex: preferredRegions.indexOf(regionIndex),
+            regionIndex: regionIndexPosition,
             suitForDarkText: bestRegion.suitForDarkText
         };
     });

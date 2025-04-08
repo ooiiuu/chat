@@ -256,20 +256,19 @@ export default {
           const imageData = await imageResponse.json();
           if (imageData.status === 'success' && imageData.respond && imageData.respond.img_base64) {
             const newImageSrc = `data:image/png;base64,${imageData.respond.img_base64}`;
+            // 原有的代码：直接显示图片
+            this.imageSrcs.push(newImageSrc);
+            this.appendMessage({
+              role: 'assistant',
+              content: '背景图片已生成',
+              imageSrc: newImageSrc
+            }); 
+            this.scrollToBottom();
             // 如果启用了自动添加文案选项
             if (this.autoAddText) {
               // 调用自动添加文案方法
               await this.autoAddCopywritingToImage(newImageSrc, userMessage);
-            } else {
-              // 原有的代码：直接显示图片
-              this.imageSrcs.push(newImageSrc);
-              this.appendMessage({
-                role: 'assistant',
-                content: '背景图片已生成',
-                imageSrc: newImageSrc
-              });
-            }
-            this.scrollToBottom();
+            } 
           } else {
             console.error('Image data not found or invalid format', imageData);
             this.appendMessage({ role: 'assistant', content: '图片生成失败' });
