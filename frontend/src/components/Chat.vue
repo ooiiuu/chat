@@ -423,6 +423,8 @@ export default {
     const conversationId = this.$route.params.conversationId;
     if (conversationId) {
       this.loadConversation(conversationId);
+      this.isNewConversation = false;
+      this.scrollToBottom();
     } else {
       this.isNewConversation = true;
     }
