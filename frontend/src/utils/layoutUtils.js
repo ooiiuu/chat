@@ -420,9 +420,6 @@ export function autoLayoutText(image, textParts, styleTemplate = 'auto') {
         }
     });
 
-    // 应用样式模板特定的调整
-    applyStyleTemplate(layout, styleTemplate, image.width, image.height);
-
     // 1. 确保文字在图片边界内
     ensureWithinBoundaries(layout, image, textParts);
 
@@ -473,8 +470,6 @@ function detectAndFixOverlap(layout, textParts) {
         layout[key].y = currentElement.y;
         processed.push(currentElement);
     });
-
-    return layout;
 }
 
 function checkOverlap(rect1, rect2) {
@@ -516,8 +511,6 @@ function scaleTextToFit(layout, image, textParts) {
             el.fontSize = el.fontSize * scaleFactor;
         }
     });
-
-    return layout;
 }
 
 function ensureWithinBoundaries(layout, image, textParts) {
@@ -544,133 +537,8 @@ function ensureWithinBoundaries(layout, image, textParts) {
             el.y = image.height - padding - el.fontSize / 2;
         }
     });
-
-    return layout;
 }
 
-
-/**
- * 应用预设样式模板到布局
- * @param {Object} layout - 布局对象
- * @param {string} templateName - 模板名称
- * @param {number} width - 图片宽度
- * @param {number} height - 图片高度
- */
-function applyStyleTemplate(layout, templateName, width, height) {
-    const templates = {
-        classic: {
-            // 经典居中布局，默认设置
-        },
-
-        modern: {
-            // 现代布局 - 文字靠左对齐
-            mainTitle: {
-                x: width * 0.25,
-                textAlign: 'left'
-            },
-            slogan: {
-                x: width * 0.25,
-                textAlign: 'left'
-            },
-            mainText: {
-                x: width * 0.25,
-                textAlign: 'left'
-            },
-            subText: {
-                x: width * 0.25,
-                textAlign: 'left'
-            },
-            dataText: {
-                x: width * 0.25,
-                textAlign: 'left'
-            }
-        },
-
-        minimalist: {
-            // 极简布局 - 更大的字体，更少的文字，更大的行间距
-            mainTitle: {
-                fontSize: layout.mainTitle.fontSize * 1.2,
-                y: height * 0.4
-            },
-            slogan: {
-                fontSize: layout.slogan.fontSize * 1.1,
-                y: height * 0.6
-            },
-            // 极简风格只显示主标题和口号
-            mainText: {
-                opacity: 0.7,
-                fontSize: layout.mainText.fontSize * 0.8
-            },
-            subText: {
-                opacity: 0.7,
-                fontSize: layout.subText.fontSize * 0.8
-            },
-            dataText: {
-                opacity: 0.5
-            }
-        },
-
-        dramatic: {
-            // 戏剧性布局 - 更强烈的对比，更粗的描边
-            mainTitle: {
-                strokeWidth: 4,
-                y: height * 0.3
-            },
-            slogan: {
-                strokeWidth: 4,
-                y: height * 0.7
-            },
-            mainText: {
-                opacity: 0.9,
-                y: height * 0.5
-            },
-            subText: {
-                opacity: 0.8
-            },
-            dataText: {
-                opacity: 0.7
-            }
-        },
-
-        split: {
-            // 分屏布局 - 左右分区
-            mainTitle: {
-                x: width * 0.25,
-                textAlign: 'left'
-            },
-            slogan: {
-                x: width * 0.25,
-                textAlign: 'left',
-                y: height * 0.4
-            },
-            mainText: {
-                x: width * 0.75,
-                textAlign: 'right',
-                y: height * 0.6
-            },
-            subText: {
-                x: width * 0.75,
-                textAlign: 'right',
-                y: height * 0.7
-            },
-            dataText: {
-                x: width * 0.75,
-                textAlign: 'right',
-                y: height * 0.8
-            }
-        }
-    };
-
-    // 应用选择的模板
-    const template = templates[templateName] || templates.classic;
-
-    // 合并模板设置到布局
-    for (const [key, settings] of Object.entries(template)) {
-        if (layout[key]) {
-            Object.assign(layout[key], settings);
-        }
-    }
-}
 
 /**
  * 检测文本是否与其他文本元素重叠
