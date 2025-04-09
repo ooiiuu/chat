@@ -4,6 +4,7 @@
  */
 
 import { layoutTemplates } from '@/config/layoutTemplates';
+import { estimateTextWidth } from '@/utils/textUtils';
 
 /**
  * 根据样式名称获取布局配置
@@ -343,7 +344,7 @@ export function findOptimalTextPositions(imageAnalysis, textParts) {
  * @param {string} styleTemplate - 样式模板名称
  * @returns {Object} 完整的文本布局配置
  */
-export function autoLayoutText(image, textParts, styleTemplate = 'classic') {
+export function autoLayoutText(image, textParts, styleTemplate = 'auto') {
     // 分析图片
     const imageAnalysis = analyzeImage(image);
 
@@ -422,8 +423,131 @@ export function autoLayoutText(image, textParts, styleTemplate = 'classic') {
     // 应用样式模板特定的调整
     applyStyleTemplate(layout, styleTemplate, image.width, image.height);
 
+    // 1. 确保文字在图片边界内
+    ensureWithinBoundaries(layout, image, textParts);
+
+    // 2. 自动缩放超长文本
+    scaleTextToFit(layout, image, textParts);
+
+    // 3. 检测并修复文本重叠
+    detectAndFixOverlap(layout, textParts);
+
     return layout;
 }
+
+function detectAndFixOverlap(layout, textParts) {
+    const textElements = ['mainTitle', 'slogan', 'mainText', 'subText', 'dataText'];
+    const processed = [];
+
+    // 按优先级顺序处理每个文本元素
+    textElements.forEach(key => {
+        if (!textParts[key.replace('Text', '')]) return;
+
+        // 估算当前文本元素的边界框
+        const currentElement = {
+            ...layout[key],
+            width: estimateTextWidth(textParts[key.replace('Text', '')], `${layout[key].fontSize}px ${layout[key].fontFamily}`),
+            height: layout[key].fontSize * 1.5
+        };
+
+        // 检查与已处理元素的重叠
+        let overlap = true, attempts = 0;
+        const initialY = currentElement.y;
+
+        while (overlap && attempts < 5) {
+            overlap = false;
+
+            for (const el of processed) {
+                if (checkOverlap(currentElement, el)) {
+                    // 发现重叠，向下移动当前元素
+                    currentElement.y += currentElement.height * 0.8;
+                    overlap = true;
+                    break;
+                }
+            }
+
+            attempts++;
+        }
+
+        // 更新布局并添加到已处理列表
+        layout[key].y = currentElement.y;
+        processed.push(currentElement);
+    });
+
+    return layout;
+}
+
+function checkOverlap(rect1, rect2) {
+    // 计算每个元素的边界
+    const r1 = {
+        left: rect1.x - rect1.width / 2,
+        right: rect1.x + rect1.width / 2,
+        top: rect1.y - rect1.height / 2,
+        bottom: rect1.y + rect1.height / 2
+    };
+
+    const r2 = {
+        left: rect2.x - rect2.width / 2,
+        right: rect2.x + rect2.width / 2,
+        top: rect2.y - rect2.height / 2,
+        bottom: rect2.y + rect2.height / 2
+    };
+
+    // 检查重叠
+    return !(r1.right < r2.left || r1.left > r2.right ||
+        r1.bottom < r2.top || r1.top > r2.bottom);
+}
+
+function scaleTextToFit(layout, image, textParts) {
+    const padding = 20; // 边缘安全距离
+
+    Object.keys(layout).forEach(key => {
+        const text = textParts[key.replace('Text', '')];
+        if (!text) return;
+
+        const el = layout[key];
+        let textWidth = estimateTextWidth(text, `${el.fontSize}px ${el.fontFamily}`);
+
+        // 检查是否超出水平边界
+        const maxAllowedWidth = image.width - 2 * padding;
+        if (textWidth > maxAllowedWidth) {
+            // 计算缩放比例并应用
+            const scaleFactor = maxAllowedWidth / textWidth;
+            el.fontSize = el.fontSize * scaleFactor;
+        }
+    });
+
+    return layout;
+}
+
+function ensureWithinBoundaries(layout, image, textParts) {
+    const padding = 20; // 边缘安全距离
+
+    Object.keys(layout).forEach(key => {
+        if (!textParts[key.replace('Text', '')]) return;
+
+        const el = layout[key];
+        const textWidth = estimateTextWidth(textParts[key.replace('Text', '')], `${el.fontSize}px ${el.fontFamily}`);
+
+        // 水平方向边界检查
+        const halfWidth = textWidth / 2;
+        if (el.x - halfWidth < padding) {
+            el.x = padding + halfWidth;
+        } else if (el.x + halfWidth > image.width - padding) {
+            el.x = image.width - padding - halfWidth;
+        }
+
+        // 垂直方向边界检查
+        if (el.y < padding + el.fontSize / 2) {
+            el.y = padding + el.fontSize / 2;
+        } else if (el.y > image.height - padding - el.fontSize / 2) {
+            el.y = image.height - padding - el.fontSize / 2;
+        }
+    });
+
+    return layout;
+}
+
 
 /**
  * 应用预设样式模板到布局
@@ -621,5 +745,9 @@ export default {
     autoLayoutText,
     detectTextOverlap,
     getTextEffects,
-    getLayoutConfig  // 添加到导出的函数列表中
+    getLayoutConfig,  // 添加到导出的函数列表中
+    detectAndFixOverlap,
+    checkOverlap,
+    scaleTextToFit,
+    ensureWithinBoundaries
 };

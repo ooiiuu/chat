@@ -229,7 +229,7 @@ export async function processImageWithText(imageData, copywritingText, styleTemp
     // 配置选项
     const options = {
       styleTemplate: styleTemplate,
-      useAutoLayout: true  // 是否使用自动布局（分析图片特征）
+      useAutoLayout: styleTemplate === 'auto'  // 根据styleTemplate决定是否使用自动布局
     };
     
     // 处理图像添加文字

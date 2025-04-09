@@ -35,9 +35,15 @@
 
           <div v-if="autoAddText" class="text-style-options">
             <select v-model="textStyle">
+              <option value="auto">自动布局</option>
               <option value="classic">经典样式</option>
               <option value="modern">现代样式</option>
               <option value="minimalist">极简样式</option>
+              <option value="dramatic">戏剧风格</option>
+              <option value="split">分屏设计</option>
+              <option value="vertical">上下结构</option>
+              <option value="diagonal">对角线布局</option>
+              <option value="formal">正式风格</option>
             </select>
           </div>
         </div>
@@ -70,7 +76,7 @@ export default {
       currentConversationId: null,
       isNewConversation: true,
       autoAddText: true, // 是否自动添加文案
-      textStyle: 'classic' // 文本样式预设
+      textStyle: 'auto' // 文本样式预设
     };
   },
   computed: {
