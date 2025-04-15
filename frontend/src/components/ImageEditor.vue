@@ -1,3 +1,4 @@
+<!-- src/components/ImageEditor.vue -->
 <template>
   <div class="editor-container">
     <div class="editor-header">

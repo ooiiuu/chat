@@ -1,3 +1,5 @@
+## app.py
+# -*- coding: utf-8 -*-
 from flask import Flask, request, jsonify, Response, render_template, redirect, url_for, flash, current_app
 from flask_cors import CORS
 import re

@@ -1,3 +1,4 @@
+<!-- frontend\src\views\ConversationHistory.vue -->
 <template>
     <div class="history-container">
         <h1>历史会话</h1>

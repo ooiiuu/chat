@@ -1,4 +1,4 @@
-<!-- HomeView.vue -->
+<!-- frontend\src\views\HomeView.vue -->
 <template>
     <div class="login-container">
       <div class="login-card">

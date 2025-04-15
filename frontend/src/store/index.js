@@ -1,3 +1,4 @@
+// src/store/index.js
 import { createStore } from 'vuex';
 // 添加 auth 模块的导入
 import auth from './modules/auth';

@@ -1,3 +1,4 @@
+// src/config/layoutTemplates.js
 /**
  * 预设布局模板配置
  * 定义不同风格的文本布局模板

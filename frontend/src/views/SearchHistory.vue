@@ -1,3 +1,4 @@
+<!-- frontend\src\views\SearchHistory.vue -->
 <template>
     <div class="search-container">
       <h1>搜索历史记录</h1>

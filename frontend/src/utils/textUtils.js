@@ -1,3 +1,4 @@
+// src/utils/textUtils.js
 /**
  * 文案处理工具函数
  * 用于解析和处理AI生成的公益海报文案

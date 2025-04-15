@@ -1,4 +1,4 @@
-// store/modules/auth.js
+// src/store/modules/auth.js
 export default {
     namespaced: true,
     state: {

@@ -1,3 +1,4 @@
+// src/services/imageService.js
 /**
  * 图像处理服务
  * 负责图像加载、处理和文字合成等功能

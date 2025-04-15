@@ -1,3 +1,4 @@
+// src/utils/layoutUtils.js
 /**
  * 布局工具函数
  * 用于自动分析图片和安排文字布局

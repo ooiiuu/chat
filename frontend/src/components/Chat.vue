@@ -1,3 +1,4 @@
+<!-- src/components/Chat.vue -->
 <template>
   <div class="chat-container">
     <div class="chat-content">
